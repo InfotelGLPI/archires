@@ -1,0 +1,27 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR Archires Development Team
+# This file is distributed under the same license as the GLPI - Archires plugin package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: GLPI - Archires plugin 1.0.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-08-23 10:24+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: setup.php:83 inc/archires.class.php:58 inc/archires.class.php:115
+#: inc/archires.class.php:478 inc/config.class.php:47 inc/profile.class.php:51
+msgid "Network architecture"
+msgstr ""
+
+#: front/config.form.php:52
+msgid "Please activate the plugin"
+msgstr ""
