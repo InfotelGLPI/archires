@@ -37,9 +37,11 @@
     <tags>
         <fr>
             <tag>Réseau</tag>
+            <tag>Cartographie</tag>
         </fr>
         <en>
             <tag>Network</tag>
+            <tag>Map</tag>
         </en>
     </tags>
     <screenshots>
