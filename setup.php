@@ -31,6 +31,7 @@ define('PLUGIN_ARCHIRES_VERSION', '1.0.0');
 
 if (!defined("PLUGIN_ARCHIRES_WEBDIR")) {
     define("PLUGIN_ARCHIRES_WEBDIR", Plugin::getWebDir("archires"));
+    define("PLUGIN_ARCHIRES_DIR", Plugin::getPhpDir("archires"));
 }
 // Init the hooks of the plugins -Needed
 function plugin_init_archires()

@@ -34,7 +34,7 @@ function plugin_archires_install()
 {
     $migration = new Migration(100);
 
-    include_once(GLPI_ROOT . "/plugins/archires/inc/profile.class.php");
+    include_once(PLUGIN_ARCHIRES_DIR . "/inc/profile.class.php");
 
     PluginArchiresArchires::install($migration);
 
@@ -52,7 +52,7 @@ function plugin_archires_install()
  */
 function plugin_archires_uninstall()
 {
-    include_once(GLPI_ROOT . "/plugins/archires/inc/profile.class.php");
+    include_once(PLUGIN_ARCHIRES_DIR . "/inc/profile.class.php");
 
     PluginArchiresArchires::uninstall();
 
