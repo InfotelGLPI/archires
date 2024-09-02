@@ -341,13 +341,13 @@ class PluginArchiresArchires extends CommonGLPI
                 continue;
             }
 
-            $plugin_icon = Plugin::doHookFunction(\Glpi\Plugin\Hooks::SET_ITEM_IMPACT_ICON, [
-                'itemtype' => $itemtype,
-                'items_id' => 0
-            ]);
-            if ($plugin_icon && is_string($plugin_icon)) {
-                $icon = ltrim($plugin_icon, '/');
-            }
+//            $plugin_icon = Plugin::doHookFunction(\Glpi\Plugin\Hooks::SET_ITEM_IMPACT_ICON, [
+//                'itemtype' => $itemtype,
+//                'items_id' => 0
+//            ]);
+//            if ($plugin_icon && is_string($plugin_icon)) {
+//                $icon = ltrim($plugin_icon, '/');
+//            }
 
             // Skip if not enabled
             if (!self::isEnabled($itemtype)) {
@@ -730,13 +730,13 @@ class PluginArchiresArchires extends CommonGLPI
         // Get web path to the image matching the itemtype from config
         $image_name = $CFG_GLPI["impact_asset_types"][get_class($item)] ?? "";
 
-        $plugin_icon = Plugin::doHookFunction(\Glpi\Plugin\Hooks::SET_ITEM_IMPACT_ICON, [
-            'itemtype' => get_class($item),
-            'items_id' => $item->getID()
-        ]);
-        if ($plugin_icon && is_string($plugin_icon)) {
-            $image_name = ltrim($plugin_icon, '/');
-        }
+//        $plugin_icon = Plugin::doHookFunction(\Glpi\Plugin\Hooks::SET_ITEM_IMPACT_ICON, [
+//            'itemtype' => get_class($item),
+//            'items_id' => $item->getID()
+//        ]);
+//        if ($plugin_icon && is_string($plugin_icon)) {
+//            $image_name = ltrim($plugin_icon, '/');
+//        }
 
         $image_name = self::checkIcon($image_name);
 
