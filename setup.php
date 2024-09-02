@@ -27,7 +27,7 @@
  --------------------------------------------------------------------------
  */
 
-define('PLUGIN_ARCHIRES_VERSION', '1.0.0');
+define('PLUGIN_ARCHIRES_VERSION', '1.0.2');
 
 if (!defined("PLUGIN_ARCHIRES_WEBDIR")) {
     define("PLUGIN_ARCHIRES_WEBDIR", Plugin::getWebDir("archires"));
