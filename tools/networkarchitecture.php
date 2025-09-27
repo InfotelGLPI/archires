@@ -33,7 +33,7 @@
  * ---------------------------------------------------------------------
  */
 
-use GlpiPlugin\Archires\Impactrelation;
+use GlpiPlugin\Archires\ImpactRelation;
 
 include('../../inc/includes.php');
 

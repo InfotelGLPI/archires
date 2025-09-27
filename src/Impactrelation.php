@@ -41,7 +41,7 @@ use Impact;
 /**
  * @since 9.5.0
  */
-class Impactrelation extends CommonDBRelation
+class ImpactRelation extends CommonDBRelation
 {
    // CommonDBRelation fields
     public static $itemtype_1          = 'itemtype_source';

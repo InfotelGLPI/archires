@@ -174,8 +174,8 @@ class Profile extends \Profile {
     */
    static function getAllRights($all = false) {
       $rights = array(
-         array('itemtype' => Impactcontext::class,
-               'label'    => Impactcontext::getTypeName(2),
+         array('itemtype' => ImpactContext::class,
+               'label'    => ImpactContext::getTypeName(2),
                'field'    => 'plugin_archires'
          ),
       );

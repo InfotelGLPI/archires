@@ -39,7 +39,7 @@ use CommonDBTM;
 /**
  * @since 9.5.0
  */
-class Impactitem extends CommonDBTM
+class ImpactItem extends CommonDBTM
 {
     /**
      * Find ImpactItem for a given CommonDBTM item

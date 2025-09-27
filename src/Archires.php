@@ -34,6 +34,8 @@ use CommonDBTM;
 use CommonGLPI;
 use Dropdown;
 use Glpi\Application\View\TemplateRenderer;
+use Glpi\Search\SearchEngine;
+use Glpi\Search\SearchOption;
 use Html;
 use Impact;
 use Infocom;
@@ -50,13 +52,13 @@ class Archires extends CommonGLPI
     // Constants used to express the direction or "flow" of a graph
     // Theses constants can also be used to express if an edge is reachable
     // when exploring the graph forward, backward or both (0b11)
-    public const DIRECTION_FORWARD    = 0b01;
-    public const DIRECTION_BACKWARD   = 0b10;
+    public const DIRECTION_FORWARD = 0b01;
+    public const DIRECTION_BACKWARD = 0b10;
 
     // Default colors used for the edges of the graph according to their flow
-    public const DEFAULT_COLOR            = 'black';   // The edge is not accessible from the starting point of the graph
-    public const IMPACT_COLOR             = '#ff3418'; // Forward
-    public const DEPENDS_COLOR            = '#1c76ff'; // Backward
+    public const DEFAULT_COLOR = 'black';   // The edge is not accessible from the starting point of the graph
+    public const IMPACT_COLOR = '#ff3418'; // Forward
+    public const DEPENDS_COLOR = '#1c76ff'; // Backward
     public const IMPACT_AND_DEPENDS_COLOR = '#ca29ff'; // Forward and backward
 
     public const NODE_ID_DELIMITER = "::";
@@ -114,7 +116,7 @@ class Archires extends CommonGLPI
         } elseif ($is_enabled_asset) {
             // If on an asset, get the number of its direct dependencies
             $total = count($DB->request([
-                'FROM'  => Impactrelation::getTable(),
+                'FROM' => ImpactRelation::getTable(),
                 'WHERE' => [
                     'OR' => [
                         [
@@ -126,7 +128,7 @@ class Archires extends CommonGLPI
                             // Impacted item is our item AND source item is enabled
                             'itemtype_impacted' => get_class($item),
                             'items_id_impacted' => $item->fields['id'],
-                            'itemtype_source'   => Impact::getEnabledItemtypes(),
+                            'itemtype_source' => Impact::getEnabledItemtypes(),
                         ],
                     ],
                 ],
@@ -134,12 +136,10 @@ class Archires extends CommonGLPI
         }
 
         return self::createTabEntry(__('Network architecture', 'archires'), $total);
-
     }
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
-
         // Impact analysis should not be available outside of central
         if (Session::getCurrentInterface() !== "central") {
             return false;
@@ -218,7 +218,8 @@ class Archires extends CommonGLPI
         //        Impact::displayListView($item, $graphForList, true);
 
         // Select view
-        echo Html::scriptBlock("
+        echo Html::scriptBlock(
+            "
          // Select default view
          $(document).ready(function() {
             if (location.hash == '#list') {
@@ -227,7 +228,8 @@ class Archires extends CommonGLPI
                showGraphView();
             }
          });
-      ");
+      "
+        );
 
 
         return true;
@@ -236,7 +238,7 @@ class Archires extends CommonGLPI
     /**
      * Display the impact analysis as an interactive graph
      *
-     * @param CommonDBTM $item    starting point of the graph
+     * @param CommonDBTM $item starting point of the graph
      */
     public static function displayGraphView(
         CommonDBTM $item
@@ -251,9 +253,9 @@ class Archires extends CommonGLPI
     /**
      * Prepare the impact network
      *
+     * @param CommonDBTM $item The specified item
      * @since 9.5
      *
-     * @param CommonDBTM $item The specified item
      */
     public static function prepareImpactNetwork(CommonDBTM $item)
     {
@@ -265,14 +267,15 @@ class Archires extends CommonGLPI
         echo Html::script("js/impact.js");
 
         // Load backend values
-        $default   = self::DEFAULT_COLOR;
-        $forward   = self::IMPACT_COLOR;
-        $backward  = self::DEPENDS_COLOR;
-        $both      = self::IMPACT_AND_DEPENDS_COLOR;
+        $default = self::DEFAULT_COLOR;
+        $forward = self::IMPACT_COLOR;
+        $backward = self::DEPENDS_COLOR;
+        $both = self::IMPACT_AND_DEPENDS_COLOR;
         $start_node = self::getNodeID($item);
 
         // Bind the backend values to the client and start the network
-        echo  Html::scriptBlock("
+        echo Html::scriptBlock(
+            "
          $(function() {
             GLPIImpact.prepareNetwork(
                $(\"#network_container\"),
@@ -285,7 +288,8 @@ class Archires extends CommonGLPI
                '$start_node'
             )
          });
-      ");
+      "
+        );
     }
 
     /**
@@ -343,7 +347,7 @@ class Archires extends CommonGLPI
         echo '<div class="impact-side-panel">';
 
         echo '<div class="impact-side-add-node">';
-        echo '<h3>' . __('Add assets') . '</h3>';
+        echo '<h3>' . __s('Add assets') . '</h3>';
         echo '<div class="impact-side-select-itemtype">';
 
         echo Html::input("impact-side-filter-itemtypes", [
@@ -352,42 +356,40 @@ class Archires extends CommonGLPI
         ]);
 
         echo '<div class="impact-side-filter-itemtypes-items">';
-        $itemtypes = $CFG_GLPI["impact_asset_types"];
+        $itemtypes = array_keys($CFG_GLPI["impact_asset_types"]);
         // Sort by translated itemtypes
-        uksort($itemtypes, function ($a, $b) {
+        usort($itemtypes, function ($a, $b) {
+            /** @var class-string $a
+             * @var class-string $b
+             */
             return strcasecmp($a::getTypeName(), $b::getTypeName());
         });
-        foreach ($itemtypes as $itemtype => $icon) {
+        foreach ($itemtypes as $itemtype) {
+            /** @var class-string $itemtype */
             // Do not display this itemtype if the user doesn't have READ rights
             if (!Session::haveRight($itemtype::$rightname, READ)) {
                 continue;
             }
-
-            //            $plugin_icon = Plugin::doHookFunction(\Glpi\Plugin\Hooks::SET_ITEM_IMPACT_ICON, [
-            //                'itemtype' => $itemtype,
-            //                'items_id' => 0
-            //            ]);
-            //            if ($plugin_icon && is_string($plugin_icon)) {
-            //                $icon = ltrim($plugin_icon, '/');
-            //            }
 
             // Skip if not enabled
             if (!self::isEnabled($itemtype)) {
                 continue;
             }
 
-            $icon = self::checkIcon($icon);
+            $icon = \Impact::getImpactIcon($itemtype);
 
             echo '<div class="impact-side-filter-itemtypes-item">';
-            echo '<h4><img class="impact-side-icon" src="' . $CFG_GLPI['root_doc'] . '/' . $icon . '" title="' . $itemtype::getTypeName() . '" data-itemtype="' . $itemtype . '">';
-            echo "<span>" . $itemtype::getTypeName() . "</span></h4>";
+            echo '<h4><img class="impact-side-icon" src="' . htmlescape($icon) . '" title="' . htmlescape(
+                    $itemtype::getTypeName()
+                ) . '" data-itemtype="' . htmlescape($itemtype) . '">';
+            echo "<span>" . htmlescape($itemtype::getTypeName()) . "</span></h4>";
             echo '</div>'; // impact-side-filter-itemtypes-item
         }
         echo '</div>'; // impact-side-filter-itemtypes-items
         echo '</div>'; // <div class="impact-side-select-itemtype">
 
         echo '<div class="impact-side-search">';
-        echo '<h4><i class="fas fa-chevron-left"></i><img><span></span></h4>';
+        echo '<h4><i class="ti ti-chevron-left"></i><img><span></span></h4>';
         echo Html::input("impact-side-filter-assets", [
             'id' => 'impact-side-filter-assets',
             'placeholder' => __('Filter assets...'),
@@ -397,15 +399,15 @@ class Archires extends CommonGLPI
         echo '<div class="impact-side-search-results"></div>';
 
         echo '<div class="impact-side-search-more">';
-        echo '<h4><i class="fas fa-chevron-down"></i>' . __("More...") . '</h4>';
+        echo '<h4><i class="ti ti-chevron-down"></i>' . __s("More...") . '</h4>';
         echo '</div>'; // <div class="impact-side-search-more">
 
         echo '<div class="impact-side-search-no-results">';
-        echo '<p>' . __("No results") . '</p>';
+        echo '<p>' . __s("No results") . '</p>';
         echo '</div>'; // <div class="impact-side-search-no-results">
 
         echo '<div class="impact-side-search-spinner">';
-        echo '<i class="fas fa-spinner fa-2x fa-spin"></i>';
+        echo '<span class="spinner-border spinner-border m-3" role="status" aria-hidden="true"></span>';
         echo '</div>'; // <div class="impact-side-search-spinner">
 
         echo '</div>'; // <div class="impact-side-search-panel">
@@ -415,44 +417,44 @@ class Archires extends CommonGLPI
         echo '</div>'; // div class="impact-side-add-node">
 
         echo '<div class="impact-side-settings">';
-        echo '<h3>' . __('Settings') . '</h3>';
+        echo '<h3>' . __s('Settings') . '</h3>';
 
-        echo '<h4>' . __('Visibility') . '</h4>';
+        echo '<h4>' . __s('Visibility') . '</h4>';
         echo '<div class="impact-side-settings-item">';
         echo Html::getCheckbox([
-            'id'      => "toggle_impact",
-            'name'    => "toggle_impact",
+            'id' => "toggle_impact",
+            'name' => "toggle_impact",
             'checked' => "true",
         ]);
-        echo '<span class="impact-checkbox-label">' . __("Show impact") . '</span>';
+        echo '<span class="impact-checkbox-label">' . __s("Show impact") . '</span>';
         echo '</div>';
 
         echo '<div class="impact-side-settings-item">';
         echo Html::getCheckbox([
-            'id'      => "toggle_depends",
-            'name'    => "toggle_depends",
+            'id' => "toggle_depends",
+            'name' => "toggle_depends",
             'checked' => "true",
         ]);
-        echo '<span class="impact-checkbox-label">' . __("Show depends") . '</span>';
+        echo '<span class="impact-checkbox-label">' . __s("Show depends") . '</span>';
         echo '</div>';
 
-        echo '<h4>' . __('Colors') . '</h4>';
+        echo '<h4>' . __s('Colors') . '</h4>';
         echo '<div class="impact-side-settings-item">';
         Html::showColorField("depends_color", []);
-        echo '<span class="impact-checkbox-label">' . __("Depends") . '</span>';
+        echo '<span class="impact-checkbox-label">' . __s("Depends") . '</span>';
         echo '</div>';
 
         echo '<div class="impact-side-settings-item">';
         Html::showColorField("impact_color", []);
-        echo '<span class="impact-checkbox-label">' . __("Impact") . '</span>';
+        echo '<span class="impact-checkbox-label">' . __s("Impact") . '</span>';
         echo '</div>';
 
         echo '<div class="impact-side-settings-item">';
         Html::showColorField("impact_and_depends_color", []);
-        echo '<span class="impact-checkbox-label">' . __("Impact and depends") . '</span>';
+        echo '<span class="impact-checkbox-label">' . __s("Impact and depends") . '</span>';
         echo '</div>';
 
-        echo '<h4>' . __('Max depth') . '</h4>';
+        echo '<h4>' . __s('Max depth') . '</h4>';
         echo '<div class="impact-side-settings-item">';
         echo '<input id="max_depth" type="range" class="impact-range" min="1" max ="10" step="1" value="5"><span id="max_depth_view" class="impact-checkbox-label"></span>';
         echo '</div>';
@@ -462,21 +464,25 @@ class Archires extends CommonGLPI
         echo '<div class="impact-side-search-footer"></div>';
         echo '</div>'; // div class="impact-side-panel">
 
-        echo '<ul>';
-        echo '<li id="save_impact" title="' . __("Save") . '"><i class="fa-fw far fa-save"></i></li>';
-        echo '<li id="impact_undo" class="impact-disabled" title="' . __("Undo") . '"><i class="fa-fw fas fa-undo"></i></li>';
-        echo '<li id="impact_redo" class="impact-disabled" title="' . __("Redo") . '"><i class="fa-fw fas fa-redo"></i></li>';
+        echo '<ul class="fs-1">';
+        echo '<li id="save_impact" title="' . __s("Save") . '"><i class="ti ti-device-floppy"></i></li>';
+        echo '<li id="impact_undo" class="impact-disabled" title="' . __s(
+                "Undo"
+            ) . '"><i class="ti ti-arrow-back-up"></i></li>';
+        echo '<li id="impact_redo" class="impact-disabled" title="' . __s(
+                "Redo"
+            ) . '"><i class="ti ti-arrow-forward-up"></i></li>';
         echo '<li class="impact-separator"></li>';
-        echo '<li id="add_node" title="' . __("Add asset") . '"><i class="fa-fw ti ti-plus"></i></li>';
-        echo '<li id="add_edge" title="' . __("Add relation") . '"><i class="fa-fw ti ti-line"></i></li>';
-        echo '<li id="add_compound" title="' . __("Add group") . '"><i class="far fa-fw fa-object-group"></i></li>';
-        echo '<li id="delete_element" title="' . __("Delete element") . '"><i class="fa-fw ti ti-trash"></i></li>';
+        echo '<li id="add_node" title="' . __s("Add asset") . '"><i class="ti ti-plus"></i></li>';
+        echo '<li id="add_edge" title="' . __s("Add relation") . '"><i class="ti ti-line"></i></li>';
+        echo '<li id="add_compound" title="' . __s("Add group") . '"><i class="ti ti-augmented-reality"></i></li>';
+        echo '<li id="delete_element" title="' . __s("Delete element") . '"><i class="ti ti-trash"></i></li>';
         echo '<li class="impact-separator"></li>';
-        echo '<li id="export_graph" title="' . __("Download") . '"><i class="fa-fw ti ti-download"></i></li>';
-        echo '<li id="toggle_fullscreen" title="' . __("Fullscreen") . '"><i class="fa-fw ti ti-maximize"></i></li>';
-        echo '<li id="impact_settings" title="' . __("Settings") . '"><i class="fa-fw ti ti-adjustments"></i></li>';
+        echo '<li id="export_graph" title="' . __s("Download") . '"><i class="ti ti-download"></i></li>';
+        echo '<li id="toggle_fullscreen" title="' . __s("Fullscreen") . '"><i class="ti ti-maximize"></i></li>';
+        echo '<li id="impact_settings" title="' . __s("Settings") . '"><i class="ti ti-adjustments"></i></li>';
         echo '</ul>';
-        echo '<span class="impact-side-toggle"><i class="fa-fw ti ti-chevron-left"></i></span>';
+        echo '<span class="impact-side-toggle"><i class="ti ti-chevron-left"></i></span>';
         echo '</div>'; // <div class="impact-side impact-side-expanded">
         echo "</td></tr>";
         echo "</table>";
@@ -486,9 +492,9 @@ class Archires extends CommonGLPI
     /**
      * Print the title and view switch
      *
-     * @param string  $graph      The network graph (json)
-     * @param string  $params     Params of the graph (json)
-     * @param bool    $readonly   Is the graph editable ?
+     * @param string $graph The network graph (json)
+     * @param string $params Params of the graph (json)
+     * @param bool $readonly Is the graph editable ?
      */
     public static function printHeader(
         string $graph,
@@ -499,12 +505,15 @@ class Archires extends CommonGLPI
         echo "<h2>" . __('Network architecture', 'archires') . "</h2>";
         echo "<div id='switchview'>";
         //        echo "<a id='sviewlist' href='#list'><i class='pointer ti ti-list' title='" . __('View as list') . "'></i></a>";
-        echo "<a id='sviewgraph' href='#graph'><i class='pointer ti ti-hierarchy-2' title='" . __('View graphical representation') . "'></i></a>";
+        echo "<a id='sviewgraph' href='#graph'><i class='pointer ti ti-hierarchy-2' title='" . __(
+                'View graphical representation'
+            ) . "'></i></a>";
         echo "</div>";
         echo "</div>";
 
         // View selection
-        echo Html::scriptBlock("
+        echo Html::scriptBlock(
+            "
          function showGraphView() {
             $('#impact_list_view').hide();
             $('#impact_graph_view').show();
@@ -531,7 +540,8 @@ class Archires extends CommonGLPI
 //         $('#sviewlist').click(function() {
 //            showListView();
 //         });
-      ");
+      "
+        );
     }
 
 
@@ -544,48 +554,49 @@ class Archires extends CommonGLPI
      */
     public static function prepareParams(CommonDBTM $item)
     {
-        $impact_item = Impactitem::findForItem($item);
+        $impact_item = ImpactItem::findForItem($item);
 
         $params = array_intersect_key($impact_item->fields, [
-            'parent_id'         => 1,
+            'parent_id' => 1,
             'impactcontexts_id' => 1,
-            'is_slave'          => 1,
+            'is_slave' => 1,
         ]);
 
         // Load context if exist
         if ($params['impactcontexts_id']) {
-            $impact_context = Impactcontext::findForImpactItem($impact_item);
+            $impact_context = ImpactContext::findForImpactItem($impact_item);
 
             if ($impact_context) {
                 $params = $params + array_intersect_key(
-                    $impact_context->fields,
-                    [
-                        'positions'                => 1,
-                        'zoom'                     => 1,
-                        'pan_x'                    => 1,
-                        'pan_y'                    => 1,
-                        'impact_color'             => 1,
-                        'depends_color'            => 1,
-                        'impact_and_depends_color' => 1,
-                        'show_depends'             => 1,
-                        'show_impact'              => 1,
-                        'max_depth'                => 1,
-                    ]
-                );
+                        $impact_context->fields,
+                        [
+                            'positions' => 1,
+                            'zoom' => 1,
+                            'pan_x' => 1,
+                            'pan_y' => 1,
+                            'impact_color' => 1,
+                            'depends_color' => 1,
+                            'impact_and_depends_color' => 1,
+                            'show_depends' => 1,
+                            'show_impact' => 1,
+                            'max_depth' => 1,
+                        ]
+                    );
             }
         }
 
         return json_encode($params);
     }
+
     /**
      * Build the impact graph starting from a node
-     *
-     * @since 9.5
      *
      * @param CommonDBTM $item Current item
      * @param boolean $recursive Each relation found will be explored from in both directions
      *
      * @return array Array containing edges and nodes
+     * @since 9.5
+     *
      */
     public static function buildGraph(CommonDBTM $item, $recursive = false)
     {
@@ -593,10 +604,24 @@ class Archires extends CommonGLPI
         $edges = [];
 
         // Explore the graph forward
-        self::buildGraphFromNode($nodes, $edges, $item, self::DIRECTION_FORWARD, [self::getNodeID($item) => true], $recursive);
+        self::buildGraphFromNode(
+            $nodes,
+            $edges,
+            $item,
+            self::DIRECTION_FORWARD,
+            [self::getNodeID($item) => true],
+            $recursive
+        );
 
         // Explore the graph backward
-        self::buildGraphFromNode($nodes, $edges, $item, self::DIRECTION_BACKWARD, [self::getNodeID($item) => true], $recursive);
+        self::buildGraphFromNode(
+            $nodes,
+            $edges,
+            $item,
+            self::DIRECTION_BACKWARD,
+            [self::getNodeID($item) => true],
+            $recursive
+        );
 
         // Add current node to the graph if no impact relations were found
         if (count($nodes) == 0) {
@@ -627,7 +652,7 @@ class Archires extends CommonGLPI
     /**
      * Create an ID for a node (itemtype::items_id)
      *
-     * @param CommonDBTM  $item Name of the node
+     * @param CommonDBTM $item Name of the node
      *
      * @return string
      */
@@ -639,31 +664,23 @@ class Archires extends CommonGLPI
     /**
      * Create an ID for an edge (NodeID->NodeID)
      *
-     * @param CommonDBTM  $itemA     First node of the edge
-     * @param CommonDBTM  $itemB     Second node of the edge
-     * @param int         $direction Direction of the edge : A to B or B to A ?
+     * @param CommonDBTM $itemA First node of the edge
+     * @param CommonDBTM $itemB Second node of the edge
+     * @param int $direction Direction of the edge : A to B or B to A ?
      *
      * @return string|null
      *
      * @throws \InvalidArgumentException
      */
-    public static function getEdgeID(
-        CommonDBTM $itemA,
-        CommonDBTM $itemB,
-        int $direction
-    ) {
-        switch ($direction) {
-            case self::DIRECTION_FORWARD:
-                return self::getNodeID($itemA) . self::EDGE_ID_DELIMITER . self::getNodeID($itemB);
-
-            case self::DIRECTION_BACKWARD:
-                return self::getNodeID($itemB) . self::EDGE_ID_DELIMITER . self::getNodeID($itemA);
-
-            default:
-                throw new \InvalidArgumentException(
-                    "Invalid value for argument \$direction ($direction)."
-                );
-        }
+    public static function getEdgeID(CommonDBTM $itemA, CommonDBTM $itemB, int $direction): ?string
+    {
+        return match ($direction) {
+            self::DIRECTION_FORWARD => self::getNodeID($itemA) . self::EDGE_ID_DELIMITER . self::getNodeID($itemB),
+            self::DIRECTION_BACKWARD => self::getNodeID($itemB) . self::EDGE_ID_DELIMITER . self::getNodeID($itemA),
+            default => throw new \InvalidArgumentException(
+                "Invalid value for argument \$direction ($direction)."
+            ),
+        };
     }
 
     /**
@@ -714,11 +731,12 @@ class Archires extends CommonGLPI
         if ($infocom->getFromDBforDevice($item::class, $item->getID())) {
             $businesscriticities_id
                 = Dropdown::getDropdownName(
-                    'glpi_businesscriticities',
-                    $infocom->fields['businesscriticities_id']
-                );
+                'glpi_businesscriticities',
+                $infocom->fields['businesscriticities_id']
+            );
         }
-        $tooltip = [__("Name") => $item->getFriendlyName(),
+        $tooltip = [
+            __("Name") => $item->getFriendlyName(),
             _n("Type", "Types", 1) => $type,
             __("Status") => $states_id,
             _n("Business criticity", "Business criticities", 1) => $businesscriticities_id,
@@ -731,16 +749,15 @@ class Archires extends CommonGLPI
     /**
      * Add a node to the node list if missing
      *
-     * @param array      $nodes  Nodes of the graph
-     * @param CommonDBTM $item   Node to add
-     *
-     * @since 9.5
+     * @param array $nodes Nodes of the graph
+     * @param CommonDBTM $item Node to add
      *
      * @return bool true if the node was missing, else false
+     * @since 9.5
+     *
      */
-    private static function addNode(array &$nodes, CommonDBTM $item)
+    private static function addNode(array &$nodes, CommonDBTM $item): bool
     {
-        /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
         // Check if the node already exist
@@ -749,30 +766,24 @@ class Archires extends CommonGLPI
             return false;
         }
 
-        // Get web path to the image matching the itemtype from config
-        $image_name = $CFG_GLPI["impact_asset_types"][get_class($item)] ?? "";
-
-        //        $plugin_icon = Plugin::doHookFunction(\Glpi\Plugin\Hooks::SET_ITEM_IMPACT_ICON, [
-        //            'itemtype' => get_class($item),
-        //            'items_id' => $item->getID()
-        //        ]);
-        //        if ($plugin_icon && is_string($plugin_icon)) {
-        //            $image_name = ltrim($plugin_icon, '/');
-        //        }
-
-        $image_name = self::checkIcon($image_name);
-
-        $tooltip = self::addTooltip($item);
-
         // Define basic data of the new node
+        $id_field = [];
+        if (in_array($item::class, SearchEngine::getMetaItemtypeAvailable(Ticket::class), true)) {
+            $search_options = SearchOption::getOptionsForItemtype($item::class);
+            $id_field = array_filter(
+                $search_options,
+                static fn($option, $id) => is_numeric($id)
+                    && $option['field'] === $item::getIndexName()
+                    && $option['table'] === $item::getTable(),
+                ARRAY_FILTER_USE_BOTH
+            );
+        }
         $new_node = [
-            'id'             => $key,
-            'label'          => $item->getFriendlyName(),
-            'itemtype'       => $item->getTypeName(),
-            'image'          => $CFG_GLPI['root_doc'] . "/$image_name",
-            'ITILObjects'    => $item->getITILTickets(true),
-            'itemtype'       => $item::getTypeName(),
-            'tooltip'        => $tooltip,
+            'id' => $key,
+            'label' => $item->getFriendlyName(),
+            'image' => \Impact::getImpactIcon($item::class, $item->getID()),
+            'ITILObjects' => $item->getITILTickets(true),
+            'id_option' => $id_field !== [] ? array_keys($id_field)[0] : null,
         ];
 
         // Only set GOTO link if the user have READ rights
@@ -808,8 +819,8 @@ class Archires extends CommonGLPI
             $user->getFromDB(Session::getLoginUserID());
             $user->computePreferences();
             $new_node['badge'] = [
-                'color'  => $user->fields["priority_$priority"],
-                'count'  => $nb_incidents + $nb_problems,
+                'color' => $user->fields["priority_$priority"],
+                'count' => $nb_incidents + $nb_problems,
                 'target' => $target,
             ];
         }
@@ -822,11 +833,11 @@ class Archires extends CommonGLPI
         }
 
         // Load or create a new ImpactItem object
-        $impact_item = Impactitem::findForItem($item);
+        $impact_item = ImpactItem::findForItem($item);
 
         // Load node position and parent
         $new_node['impactitem_id'] = $impact_item->fields['id'];
-        $new_node['parent']        = $impact_item->fields['parent_id'];
+        $new_node['parent'] = $impact_item->fields['parent_id'];
 
         // If the node has a parent, add it to the node list aswell
         if (!empty($new_node['parent'])) {
@@ -835,7 +846,7 @@ class Archires extends CommonGLPI
 
             if (!isset($nodes[$new_node['parent']])) {
                 $nodes[$new_node['parent']] = [
-                    'id'    => $compound->fields['id'],
+                    'id' => $compound->fields['id'],
                     'label' => $compound->fields['name'],
                     'color' => $compound->fields['color'],
                 ];
@@ -850,17 +861,17 @@ class Archires extends CommonGLPI
     /**
      * Add an edge to the edge list if missing, else update it's direction
      *
-     * @param array      $edges      Edges of the graph
-     * @param string     $key        ID of the new edge
-     * @param CommonDBTM $itemA      One of the node connected to this edge
-     * @param CommonDBTM $itemB      The other node connected to this edge
-     * @param int        $direction  Direction of the edge : A to B or B to A ?
-     *
-     * @since 9.5
+     * @param array $edges Edges of the graph
+     * @param string $key ID of the new edge
+     * @param CommonDBTM $itemA One of the node connected to this edge
+     * @param CommonDBTM $itemB The other node connected to this edge
+     * @param int $direction Direction of the edge : A to B or B to A ?
      *
      * @return void
      *
      * @throws InvalidArgumentException
+     * @since 9.5
+     *
      */
     private static function addEdge(
         array &$edges,
@@ -872,7 +883,7 @@ class Archires extends CommonGLPI
     ): void {
         // Just update the flag if the edge already exist
         if (isset($edges[$key])) {
-            $edges[$key]['flag'] = $edges[$key]['flag'] | $direction;
+            $edges[$key]['flag'] |= $direction;
             return;
         }
 
@@ -894,10 +905,10 @@ class Archires extends CommonGLPI
 
         // Add the new edge
         $edges[$key] = [
-            'id'     => $key,
+            'id' => $key,
             'source' => $from,
             'target' => $to,
-            'flag'   => $direction,
+            'flag' => $direction,
             'label' => $label,
         ];
     }
@@ -905,29 +916,27 @@ class Archires extends CommonGLPI
     /**
      * Explore dependencies of the current item, subfunction of buildGraph()
      *
-     * @since 9.5
-     *
-     * @param array      $edges          Edges of the graph
-     * @param array      $nodes          Nodes of the graph
-     * @param CommonDBTM $node           Current node
-     * @param int        $direction      The direction in which the graph
+     * @param array $edges Edges of the graph
+     * @param array $nodes Nodes of the graph
+     * @param CommonDBTM $node Current node
+     * @param int $direction The direction in which the graph
      *                                   is being explored : DIRECTION_FORWARD
      *                                   or DIRECTION_BACKWARD
-     * @param array      $explored_nodes List of nodes that have already been
+     * @param array $explored_nodes List of nodes that have already been
      *                                   explored
      * @param boolean $recursive Should found relations be explored in both directions
      *
      * @throws InvalidArgumentException
+     * @since 9.5
+     *
      */
     private static function buildGraphFromNode(
         array &$nodes,
         array &$edges,
         CommonDBTM $node,
         int $direction,
-        array $explored_nodes = [],
-        $recursive = false
-    ) {
-        /** @var \DBmysql $DB */
+        array $explored_nodes = []
+    ): void {
         global $DB;
 
         // Source and target are determined by the direction in which we are
@@ -949,9 +958,9 @@ class Archires extends CommonGLPI
 
         // Get relations of the current node
         $relations = $DB->request([
-            'FROM'   => ImpactRelation::getTable(),
-            'WHERE'  => [
-                'itemtype_' . $target => get_class($node),
+            'FROM' => ImpactRelation::getTable(),
+            'WHERE' => [
+                'itemtype_' . $target => $node::class,
                 'items_id_' . $target => $node->fields['id'],
             ],
         ]);
@@ -960,7 +969,7 @@ class Archires extends CommonGLPI
         if (count($relations)) {
             self::addNode($nodes, $node);
         }
-        // Iterate on each relations found
+        // Iterate on each relation found
         foreach ($relations as $related_item) {
             // Do not explore disabled itemtypes
             if (!self::isEnabled($related_item['itemtype_' . $source])) {
@@ -972,7 +981,7 @@ class Archires extends CommonGLPI
                 continue;
             }
             $related_node->getFromDB($related_item['items_id_' . $source]);
-            $label = $related_item['name'] ?? "";
+            $label = $related_item['name'];
             self::addNode($nodes, $related_node);
 
             // Add or update the relation on the graph
@@ -983,40 +992,19 @@ class Archires extends CommonGLPI
             $related_node_id = self::getNodeID($related_node);
             if (!isset($explored_nodes[$related_node_id])) {
                 $explored_nodes[$related_node_id] = true;
-                if ($recursive) {
-                    self::buildGraphFromNode(
-                        $nodes,
-                        $edges,
-                        $related_node,
-                        self::DIRECTION_FORWARD,
-                        $explored_nodes,
-                        $recursive
-                    );
-                    self::buildGraphFromNode(
-                        $nodes,
-                        $edges,
-                        $related_node,
-                        self::DIRECTION_BACKWARD,
-                        $explored_nodes,
-                        $recursive
-                    );
-                } else {
-                    self::buildGraphFromNode(
-                        $nodes,
-                        $edges,
-                        $related_node,
-                        $direction,
-                        $explored_nodes,
-                        $recursive
-                    );
-                }
+                self::buildGraphFromNode(
+                    $nodes,
+                    $edges,
+                    $related_node,
+                    $direction,
+                    $explored_nodes
+                );
             }
         }
     }
 
     public static function cronCreateNetworkArchitecture($task)
     {
-
         ini_set("memory_limit", "-1");
         ini_set("max_execution_time", "0");
 
@@ -1073,6 +1061,7 @@ class Archires extends CommonGLPI
 
             $query = "CREATE TABLE `glpi_plugin_archires_impactrelations` (
             `id` int unsigned NOT NULL AUTO_INCREMENT,
+            `name` varchar(255) NOT NULL DEFAULT '',
   `itemtype_source` varchar(255) NOT NULL DEFAULT '',
   `items_id_source` int unsigned NOT NULL DEFAULT '0',
   `itemtype_impacted` varchar(255) NOT NULL DEFAULT '',
@@ -1123,7 +1112,11 @@ class Archires extends CommonGLPI
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;";
             $DB->doQuery($query);
-
+        }
+        if ($DB->tableExists("glpi_plugin_archires_impactrelations")
+            && !$DB->fieldExists("glpi_plugin_archires_impactrelations", "name")) {
+            $query = "ALTER TABLE `glpi_plugin_archires_impactrelations` ADD `name` varchar(255) NOT NULL DEFAULT '' AFTER `id`;";
+            $DB->doQuery($query);
         }
 
         return true;

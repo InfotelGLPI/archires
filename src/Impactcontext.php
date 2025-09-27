@@ -40,7 +40,7 @@ use CommonDBTM;
 /**
  * @since 9.5.0
  */
-class Impactcontext extends CommonDBTM
+class ImpactContext extends CommonDBTM
 {
 
     /**
@@ -49,7 +49,7 @@ class Impactcontext extends CommonDBTM
      * @param ImpactItem $item
      * @return ImpactContext|false
      */
-    public static function findForImpactItem(Impactitem $item)
+    public static function findForImpactItem(ImpactItem $item)
     {
         $impactContext = new self();
         $exist = $impactContext->getFromDB($item->fields['impactcontexts_id']);
