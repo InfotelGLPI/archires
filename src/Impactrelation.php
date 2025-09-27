@@ -33,10 +33,15 @@
  * ---------------------------------------------------------------------
  */
 
+namespace GlpiPlugin\Archires;
+
+use CommonDBRelation;
+use Impact;
+
 /**
  * @since 9.5.0
  */
-class PluginArchiresImpactrelation extends CommonDBRelation
+class Impactrelation extends CommonDBRelation
 {
    // CommonDBRelation fields
     public static $itemtype_1          = 'itemtype_source';

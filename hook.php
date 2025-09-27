@@ -27,6 +27,9 @@
  --------------------------------------------------------------------------
  */
 
+use GlpiPlugin\Archires\Archires;
+use GlpiPlugin\Archires\Profile;
+
 /**
  * @return bool
  */
@@ -34,15 +37,13 @@ function plugin_archires_install()
 {
     $migration = new Migration(100);
 
-    include_once(PLUGIN_ARCHIRES_DIR . "/inc/profile.class.php");
+    Archires::install($migration);
 
-    PluginArchiresArchires::install($migration);
-
-    CronTask::Register('PluginArchiresArchires', 'CreateNetworkArchitecture',
+    CronTask::Register(Archires::class, 'CreateNetworkArchitecture',
         WEEK_TIMESTAMP, ['state' => CronTask::STATE_DISABLE]);
 
-    PluginArchiresProfile::initProfile();
-    PluginArchiresProfile::createFirstAccess($_SESSION['glpiactiveprofile']['id']);
+    Profile::initProfile();
+    Profile::createFirstAccess($_SESSION['glpiactiveprofile']['id']);
 
     return true;
 }
@@ -52,19 +53,18 @@ function plugin_archires_install()
  */
 function plugin_archires_uninstall()
 {
-    include_once(PLUGIN_ARCHIRES_DIR . "/inc/profile.class.php");
 
-    PluginArchiresArchires::uninstall();
+    Archires::uninstall();
 
     CronTask::unregister("archires");
 
     //Delete rights associated with the plugin
     $profileRight = new ProfileRight();
-    foreach (PluginArchiresProfile::getAllRights() as $right) {
+    foreach (Profile::getAllRights() as $right) {
         $profileRight->deleteByCriteria(array('name' => $right['field']));
     }
 
-    PluginArchiresProfile::removeRightsFromSession();
+    Profile::removeRightsFromSession();
 
     return true;
 }

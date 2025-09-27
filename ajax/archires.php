@@ -33,8 +33,14 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Http\Response;
+use Glpi\Exception\Http\AccessDeniedHttpException;
+use Glpi\Exception\Http\BadRequestHttpException;
 use Glpi\Plugin\Hooks;
+use GlpiPlugin\Archires\Archires;
+use GlpiPlugin\Archires\Impactcompound;
+use GlpiPlugin\Archires\Impactitem;
+use GlpiPlugin\Archires\Impactrelation;
+
 const DELTA_ACTION_ADD    = 1;
 const DELTA_ACTION_UPDATE = 2;
 const DELTA_ACTION_DELETE = 3;
@@ -68,7 +74,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
 
                 // Check required params
                 if (empty($itemtype)) {
-                    Response::sendError(400, "Missing itemtype");
+                    throw new BadRequestHttpException("Missing itemtype");
                 }
                 $icon = $CFG_GLPI["impact_asset_types"][$itemtype];
                 // Execute search
@@ -95,19 +101,19 @@ switch ($_SERVER['REQUEST_METHOD']) {
 
                // Check required params
                 if (empty($itemtype) || empty($items_id)) {
-                    Response::sendError(400, "Missing itemtype or items_id");
+                    throw new BadRequestHttpException("Missing itemtype or items_id");
                 }
 
                // Check that the the target asset exist
                 if (!Impact::assetExist($itemtype, $items_id)) {
-                    Response::sendError(400, "Object[class=$itemtype, id=$items_id] doesn't exist");
+                    throw new BadRequestHttpException("Object[class=$itemtype, id=$items_id] doesn't exist");
                 }
 
                // Prepare graph
                 $item = new $itemtype();
                 $item->getFromDB($items_id);
-                $graph = PluginArchiresArchires::buildGraph($item);
-                $params = PluginArchiresArchires::prepareParams($item);
+                $graph = Archires::buildGraph($item);
+                $params = Archires::prepareParams($item);
                 $readonly = $item->can($items_id, UPDATE);
 
                 if ($view == "graph") {
@@ -126,7 +132,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 break;
 
             default:
-                Response::sendError(400, "Missing or invalid 'action' parameter");
+                throw new BadRequestHttpException("Missing or invalid 'action' parameter");
                 break;
         }
         break;
@@ -135,35 +141,34 @@ switch ($_SERVER['REQUEST_METHOD']) {
     case 'POST':
        // Check required params
         if (!isset($_POST['impacts'])) {
-            Response::sendError(400, "Missing 'impacts' payload");
+            throw new BadRequestHttpException("Missing 'impacts' payload");
         }
 
        // Decode data (should be json)
         $data = Toolbox::jsonDecode($_POST['impacts'], true);
         if (!is_array($data)) {
-            Response::sendError(400, "Payload should be an array");
+            throw new BadRequestHttpException("Payload should be an array");
         }
-        $data = Toolbox::addslashes_deep($data);
 
         $readonly = true;
 
        // Handle context for the starting node
-        $context_em = new \PluginArchiresImpactcontext();
+        $context_em = new Impactcontext();
         $context_data = $data['context'];
 
        // Get id and type from node_id (e.g. Computer::4 -> [Computer, 4])
-        $start_node_details = explode(PluginArchiresArchires::NODE_ID_DELIMITER, $context_data['node_id']);
+        $start_node_details = explode(Archires::NODE_ID_DELIMITER, $context_data['node_id']);
 
        // Get impact_item for this node
         $item = new $start_node_details[0]();
         $item->getFromDB($start_node_details[1]);
-        $impact_item = \PluginArchiresImpactitem::findForItem($item);
+        $impact_item = Impactitem::findForItem($item);
         $start_node_impact_item_id = $impact_item->fields['id'];
         $readonly = !$item->can($item->fields['id'], UPDATE);
 
        // Stop here if readonly graph
         if ($readonly) {
-            Response::sendError(403, "Missing rights");
+            throw new AccessDeniedHttpException( "Missing rights");
         }
 
         $context_id = 0;
@@ -187,7 +192,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
 
        // Save impact relation delta
-        $em = new PluginArchiresImpactrelation();
+        $em = new Impactrelation();
         foreach ($data['edges'] as $impact) {
            // Extract action
             $action = $impact['action'];
@@ -199,13 +204,13 @@ switch ($_SERVER['REQUEST_METHOD']) {
                     break;
 
                 case DELTA_ACTION_UPDATE:
-                    $edge['id']   = PluginArchiresImpactrelation::getIDFromInput($impact);
+                    $edge['id']   = Impactrelation::getIDFromInput($impact);
                     $edge['name'] = $impact['name'];
                     $em->update($edge);
                     break;
 
                 case DELTA_ACTION_DELETE:
-                    $impact['id'] = PluginArchiresImpactrelation::getIDFromInput($impact);
+                    $impact['id'] = Impactrelation::getIDFromInput($impact);
                     $em->delete($impact);
                     break;
 
@@ -215,7 +220,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
 
        // Save impact compound delta
-        $em = new PluginArchiresImpactcompound();
+        $em = new Impactcompound();
         foreach ($data['compounds'] as $id => $compound) {
            // Extract action
             $action = $compound['action'];
@@ -250,7 +255,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
 
        // Save impact item delta
-        $em = new PluginArchiresImpactitem();
+        $em = new Impactitem();
         foreach ($data['items'] as $id => $impactItem) {
            // Extract action
             $action = $impactItem['action'];

@@ -27,50 +27,33 @@
  --------------------------------------------------------------------------
  */
 
-define('PLUGIN_ARCHIRES_VERSION', '1.0.2');
+use GlpiPlugin\Archires\Archires;
+use GlpiPlugin\Archires\Profile;
+
+define('PLUGIN_ARCHIRES_VERSION', '1.1.0');
+
+global $CFG_GLPI;
 
 if (!defined("PLUGIN_ARCHIRES_WEBDIR")) {
-    define("PLUGIN_ARCHIRES_WEBDIR", Plugin::getWebDir("archires"));
     define("PLUGIN_ARCHIRES_DIR", Plugin::getPhpDir("archires"));
+    $root = $CFG_GLPI['root_doc'] . '/plugins/archires';
+    define("PLUGIN_ARCHIRES_WEBDIR", $root);
 }
 // Init the hooks of the plugins -Needed
 function plugin_init_archires()
 {
-    global $PLUGIN_HOOKS, $CFG_GLPI;
+    global $PLUGIN_HOOKS;
 
     $PLUGIN_HOOKS['csrf_compliant']['archires'] = true;
-    $PLUGIN_HOOKS['change_profile']['archires'] = array('PluginArchiresProfile', 'initProfile');
+    $PLUGIN_HOOKS['change_profile']['archires'] = array(Profile::class, 'initProfile');
 
     if (Session::getLoginUserID()) {
-        Plugin::registerClass('PluginArchiresArchires', ['addtabon' => ['Computer','NetworkEquipment']]);
+        Plugin::registerClass(Archires::class, ['addtabon' => ['Computer','NetworkEquipment']]);
 
         Plugin::registerClass(
-            'PluginArchiresProfile',
+            Profile::class,
             array('addtabon' => 'Profile')
         );
-
-        CronTask::Register('PluginAutoexportsearchesFiles', 'DeleteFile',
-            MONTH_TIMESTAMP, ['state' => CronTask::STATE_DISABLE]);
-
-//       $PLUGIN_HOOKS['post_item_form']['archires']  = [PluginArchiresNetworkEquipmenttask::class, 'addField'];
-//       $PLUGIN_HOOKS['pre_item_form']['archires'] = [PluginArchiresNetworkEquipmenttask::class, 'messageWarning'];
-//       $PLUGIN_HOOKS['pre_item_add']['archires'] =
-//           ['TicketTask'         => ['PluginArchiresNetworkEquipmenttask',        'beforeAdd']];
-//       $PLUGIN_HOOKS['item_add']['archires'] = ['TicketTask'            => ['PluginArchiresNetworkEquipmenttask',
-//           'taskAdd']];
-//       $PLUGIN_HOOKS['pre_item_update']['archires'] =
-//           ['TicketTask'         => ['PluginArchiresNetworkEquipmenttask',        'beforeUpdate']];
-//       $PLUGIN_HOOKS['pre_item_update']['archires'] = ['TicketTask'            => ['PluginArchiresNetworkEquipmenttask',
-//           'taskUpdate']];
-//
-//       $PLUGIN_HOOKS['pre_show_item']['archires'] = ['PluginArchiresNetworkEquipmenttask', 'showWarning'];
-//
-//       if (Session::haveRight("plugin_archires", UPDATE)) {
-//           $PLUGIN_HOOKS['config_page']['archires'] = 'front/config.form.php';
-////           $PLUGIN_HOOKS["menu_toadd"]['archires']['config'] = 'PluginArchiresConfig';
-//       }
-//       $PLUGIN_HOOKS['add_javascript']['archires'][] = "lib/redips/redips-drag-min.js";
-//       $PLUGIN_HOOKS['add_javascript']['archires'][] = "scripts/plugin_servicecatalog_drag-field-row.js";
     }
 }
 
@@ -89,8 +72,8 @@ function plugin_version_archires()
         'homepage' => '',
         'requirements' => [
             'glpi' => [
-                'min' => '10.0',
-                'max' => '11.0',
+                'min' => '11.0',
+                'max' => '12.0',
                 'dev' => false
             ]
         ]

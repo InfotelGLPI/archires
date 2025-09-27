@@ -27,11 +27,16 @@
  --------------------------------------------------------------------------
  */
 
+namespace GlpiPlugin\Archires;
+
+use CommonDBTM;
+use Html;
+
 if (!defined('GLPI_ROOT')) {
     die("Sorry. You can't access directly to this file");
 }
 
-class PluginArchiresConfig extends CommonDBTM
+class Config extends CommonDBTM
 {
 
    static $rightname = 'plugin_archires';

@@ -1,4 +1,5 @@
 <?php
+
 /*
  * @version $Id: HEADER 15930 2011-10-30 15:47:55Z tsmr $
  -------------------------------------------------------------------------
@@ -27,34 +28,55 @@
  --------------------------------------------------------------------------
  */
 
-class PluginArchiresArchires extends CommonGLPI
-{
+namespace GlpiPlugin\Archires;
 
+use CommonDBTM;
+use CommonGLPI;
+use Dropdown;
+use Glpi\Application\View\TemplateRenderer;
+use Html;
+use Impact;
+use Infocom;
+use Migration;
+use NetworkPort;
+use NetworkPort_NetworkPort;
+use Problem;
+use Session;
+use Ticket;
+use User;
+
+class Archires extends CommonGLPI
+{
     // Constants used to express the direction or "flow" of a graph
     // Theses constants can also be used to express if an edge is reachable
     // when exploring the graph forward, backward or both (0b11)
-    const DIRECTION_FORWARD    = 0b01;
-    const DIRECTION_BACKWARD   = 0b10;
+    public const DIRECTION_FORWARD    = 0b01;
+    public const DIRECTION_BACKWARD   = 0b10;
 
     // Default colors used for the edges of the graph according to their flow
-    const DEFAULT_COLOR            = 'black';   // The edge is not accessible from the starting point of the graph
-    const IMPACT_COLOR             = '#ff3418'; // Forward
-    const DEPENDS_COLOR            = '#1c76ff'; // Backward
-    const IMPACT_AND_DEPENDS_COLOR = '#ca29ff'; // Forward and backward
+    public const DEFAULT_COLOR            = 'black';   // The edge is not accessible from the starting point of the graph
+    public const IMPACT_COLOR             = '#ff3418'; // Forward
+    public const DEPENDS_COLOR            = '#1c76ff'; // Backward
+    public const IMPACT_AND_DEPENDS_COLOR = '#ca29ff'; // Forward and backward
 
-    const NODE_ID_DELIMITER = "::";
-    const EDGE_ID_DELIMITER = "->";
+    public const NODE_ID_DELIMITER = "::";
+    public const EDGE_ID_DELIMITER = "->";
 
     // Consts for depth values
-    const DEFAULT_DEPTH = 5;
-    const MAX_DEPTH = 10;
-    const NO_DEPTH_LIMIT = 10000;
+    public const DEFAULT_DEPTH = 5;
+    public const MAX_DEPTH = 10;
+    public const NO_DEPTH_LIMIT = 10000;
 
-    static $rightname = 'plugin_archires';
+    public static $rightname = 'plugin_archires';
 
-    static function getTypeName($nb = 0)
+    public static function getTypeName($nb = 0)
     {
         return __('Network architecture', 'archires');
+    }
+
+    public static function getIcon()
+    {
+        return "ti ti-topology-star";
     }
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
@@ -89,10 +111,10 @@ class PluginArchiresArchires extends CommonGLPI
         ) {
             // Count is disabled in config OR no item loaded OR ITIL object -> no count
             $total = 0;
-        } else if ($is_enabled_asset) {
+        } elseif ($is_enabled_asset) {
             // If on an asset, get the number of its direct dependencies
             $total = count($DB->request([
-                'FROM'  => PluginArchiresImpactrelation::getTable(),
+                'FROM'  => Impactrelation::getTable(),
                 'WHERE' => [
                     'OR' => [
                         [
@@ -104,10 +126,10 @@ class PluginArchiresArchires extends CommonGLPI
                             // Impacted item is our item AND source item is enabled
                             'itemtype_impacted' => get_class($item),
                             'items_id_impacted' => $item->fields['id'],
-                            'itemtype_source'   => Impact::getEnabledItemtypes()
-                        ]
-                    ]
-                ]
+                            'itemtype_source'   => Impact::getEnabledItemtypes(),
+                        ],
+                    ],
+                ],
             ]));
         }
 
@@ -146,35 +168,35 @@ class PluginArchiresArchires extends CommonGLPI
         }
 
         // For an ITIL object, load the first linked element by default
-//        if (is_a($item, "CommonITILObject")) {
-//            $linked_items = $item->getLinkedItems();
-//
-//            // Search for a valid linked item of this ITILObject
-//            $items_data = [];
-//            foreach ($linked_items as $itemtype => $linked_item_ids) {
-//                $class = $itemtype;
-//                if (self::isEnabled($class)) {
-//                    $item = new $class();
-//                    foreach ($linked_item_ids as $linked_item_id) {
-//                        if (!$item->getFromDB($linked_item_id)) {
-//                            continue;
-//                        }
-//                        $items_data[] = [
-//                            'itemtype' => $itemtype,
-//                            'items_id' => $linked_item_id,
-//                            'name'     => $item->getNameID(),
-//                        ];
-//                    }
-//                }
-//            }
-//
-//            // No valid linked item were found, tab shouldn't be visible
-//            if (empty($items_data)) {
-//                return false;
-//            }
-//
-//            Impact::printAssetSelectionForm($items_data);
-//        }
+        //        if (is_a($item, "CommonITILObject")) {
+        //            $linked_items = $item->getLinkedItems();
+        //
+        //            // Search for a valid linked item of this ITILObject
+        //            $items_data = [];
+        //            foreach ($linked_items as $itemtype => $linked_item_ids) {
+        //                $class = $itemtype;
+        //                if (self::isEnabled($class)) {
+        //                    $item = new $class();
+        //                    foreach ($linked_item_ids as $linked_item_id) {
+        //                        if (!$item->getFromDB($linked_item_id)) {
+        //                            continue;
+        //                        }
+        //                        $items_data[] = [
+        //                            'itemtype' => $itemtype,
+        //                            'items_id' => $linked_item_id,
+        //                            'name'     => $item->getNameID(),
+        //                        ];
+        //                    }
+        //                }
+        //            }
+        //
+        //            // No valid linked item were found, tab shouldn't be visible
+        //            if (empty($items_data)) {
+        //                return false;
+        //            }
+        //
+        //            Impact::printAssetSelectionForm($items_data);
+        //        }
 
         // Check is the impact analysis is enabled for $class
         if (!Impact::isEnabled($class)) {
@@ -192,8 +214,8 @@ class PluginArchiresArchires extends CommonGLPI
         // Displays views
         self::displayGraphView($item);
 
-//        $graphForList = Impact::buildGraph($item);
-//        Impact::displayListView($item, $graphForList, true);
+        //        $graphForList = Impact::buildGraph($item);
+        //        Impact::displayListView($item, $graphForList, true);
 
         // Select view
         echo Html::scriptBlock("
@@ -274,7 +296,7 @@ class PluginArchiresArchires extends CommonGLPI
     public static function printShowOngoingDialog()
     {
         // This dialog will be built dynamically by the front end
-        \Glpi\Application\View\TemplateRenderer::getInstance()->display('impact/ongoing_modal.html.twig');
+        TemplateRenderer::getInstance()->display('impact/ongoing_modal.html.twig');
     }
 
     /**
@@ -284,7 +306,7 @@ class PluginArchiresArchires extends CommonGLPI
      */
     public static function printEditCompoundDialog()
     {
-        \Glpi\Application\View\TemplateRenderer::getInstance()->display('impact/edit_compound_modal.html.twig');
+        TemplateRenderer::getInstance()->display('impact/edit_compound_modal.html.twig');
     }
 
     /**
@@ -292,7 +314,7 @@ class PluginArchiresArchires extends CommonGLPI
      */
     private static function printEditEdgeDialog(): void
     {
-        \Glpi\Application\View\TemplateRenderer::getInstance()->display('impact/edit_edge_modal.html.twig');
+        TemplateRenderer::getInstance()->display('impact/edit_edge_modal.html.twig');
     }
 
     /**
@@ -341,13 +363,13 @@ class PluginArchiresArchires extends CommonGLPI
                 continue;
             }
 
-//            $plugin_icon = Plugin::doHookFunction(\Glpi\Plugin\Hooks::SET_ITEM_IMPACT_ICON, [
-//                'itemtype' => $itemtype,
-//                'items_id' => 0
-//            ]);
-//            if ($plugin_icon && is_string($plugin_icon)) {
-//                $icon = ltrim($plugin_icon, '/');
-//            }
+            //            $plugin_icon = Plugin::doHookFunction(\Glpi\Plugin\Hooks::SET_ITEM_IMPACT_ICON, [
+            //                'itemtype' => $itemtype,
+            //                'items_id' => 0
+            //            ]);
+            //            if ($plugin_icon && is_string($plugin_icon)) {
+            //                $icon = ltrim($plugin_icon, '/');
+            //            }
 
             // Skip if not enabled
             if (!self::isEnabled($itemtype)) {
@@ -476,7 +498,7 @@ class PluginArchiresArchires extends CommonGLPI
         echo '<div class="impact-header">';
         echo "<h2>" . __('Network architecture', 'archires') . "</h2>";
         echo "<div id='switchview'>";
-//        echo "<a id='sviewlist' href='#list'><i class='pointer ti ti-list' title='" . __('View as list') . "'></i></a>";
+        //        echo "<a id='sviewlist' href='#list'><i class='pointer ti ti-list' title='" . __('View as list') . "'></i></a>";
         echo "<a id='sviewgraph' href='#graph'><i class='pointer ti ti-hierarchy-2' title='" . __('View graphical representation') . "'></i></a>";
         echo "</div>";
         echo "</div>";
@@ -522,7 +544,7 @@ class PluginArchiresArchires extends CommonGLPI
      */
     public static function prepareParams(CommonDBTM $item)
     {
-        $impact_item = PluginArchiresImpactitem::findForItem($item);
+        $impact_item = Impactitem::findForItem($item);
 
         $params = array_intersect_key($impact_item->fields, [
             'parent_id'         => 1,
@@ -532,24 +554,24 @@ class PluginArchiresArchires extends CommonGLPI
 
         // Load context if exist
         if ($params['impactcontexts_id']) {
-            $impact_context = PluginArchiresImpactcontext::findForImpactItem($impact_item);
+            $impact_context = Impactcontext::findForImpactItem($impact_item);
 
             if ($impact_context) {
                 $params = $params + array_intersect_key(
-                        $impact_context->fields,
-                        [
-                            'positions'                => 1,
-                            'zoom'                     => 1,
-                            'pan_x'                    => 1,
-                            'pan_y'                    => 1,
-                            'impact_color'             => 1,
-                            'depends_color'            => 1,
-                            'impact_and_depends_color' => 1,
-                            'show_depends'             => 1,
-                            'show_impact'              => 1,
-                            'max_depth'                => 1,
-                        ]
-                    );
+                    $impact_context->fields,
+                    [
+                        'positions'                => 1,
+                        'zoom'                     => 1,
+                        'pan_x'                    => 1,
+                        'pan_y'                    => 1,
+                        'impact_color'             => 1,
+                        'depends_color'            => 1,
+                        'impact_and_depends_color' => 1,
+                        'show_depends'             => 1,
+                        'show_impact'              => 1,
+                        'max_depth'                => 1,
+                    ]
+                );
             }
         }
 
@@ -586,7 +608,7 @@ class PluginArchiresArchires extends CommonGLPI
 
         return [
             'nodes' => $nodes,
-            'edges' => $edges
+            'edges' => $edges,
         ];
     }
 
@@ -623,7 +645,7 @@ class PluginArchiresArchires extends CommonGLPI
      *
      * @return string|null
      *
-     * @throws InvalidArgumentException
+     * @throws \InvalidArgumentException
      */
     public static function getEdgeID(
         CommonDBTM $itemA,
@@ -692,15 +714,15 @@ class PluginArchiresArchires extends CommonGLPI
         if ($infocom->getFromDBforDevice($item::class, $item->getID())) {
             $businesscriticities_id
                 = Dropdown::getDropdownName(
-                'glpi_businesscriticities',
-                $infocom->fields['businesscriticities_id']
-            );
+                    'glpi_businesscriticities',
+                    $infocom->fields['businesscriticities_id']
+                );
         }
         $tooltip = [__("Name") => $item->getFriendlyName(),
             _n("Type", "Types", 1) => $type,
             __("Status") => $states_id,
             _n("Business criticity", "Business criticities", 1) => $businesscriticities_id,
-            __("Comments") => $item->fields['comment']
+            __("Comments") => $item->fields['comment'],
         ];
 
         return $tooltip;
@@ -730,13 +752,13 @@ class PluginArchiresArchires extends CommonGLPI
         // Get web path to the image matching the itemtype from config
         $image_name = $CFG_GLPI["impact_asset_types"][get_class($item)] ?? "";
 
-//        $plugin_icon = Plugin::doHookFunction(\Glpi\Plugin\Hooks::SET_ITEM_IMPACT_ICON, [
-//            'itemtype' => get_class($item),
-//            'items_id' => $item->getID()
-//        ]);
-//        if ($plugin_icon && is_string($plugin_icon)) {
-//            $image_name = ltrim($plugin_icon, '/');
-//        }
+        //        $plugin_icon = Plugin::doHookFunction(\Glpi\Plugin\Hooks::SET_ITEM_IMPACT_ICON, [
+        //            'itemtype' => get_class($item),
+        //            'items_id' => $item->getID()
+        //        ]);
+        //        if ($plugin_icon && is_string($plugin_icon)) {
+        //            $image_name = ltrim($plugin_icon, '/');
+        //        }
 
         $image_name = self::checkIcon($image_name);
 
@@ -800,7 +822,7 @@ class PluginArchiresArchires extends CommonGLPI
         }
 
         // Load or create a new ImpactItem object
-        $impact_item = PluginArchiresImpactitem::findForItem($item);
+        $impact_item = Impactitem::findForItem($item);
 
         // Load node position and parent
         $new_node['impactitem_id'] = $impact_item->fields['id'];
@@ -808,7 +830,7 @@ class PluginArchiresArchires extends CommonGLPI
 
         // If the node has a parent, add it to the node list aswell
         if (!empty($new_node['parent'])) {
-            $compound = new PluginArchiresImpactCompound();
+            $compound = new ImpactCompound();
             $compound->getFromDB($new_node['parent']);
 
             if (!isset($nodes[$new_node['parent']])) {
@@ -845,8 +867,9 @@ class PluginArchiresArchires extends CommonGLPI
         string $key,
         CommonDBTM $itemA,
         CommonDBTM $itemB,
-        int $direction, string $label): void
-    {
+        int $direction,
+        string $label
+    ): void {
         // Just update the flag if the edge already exist
         if (isset($edges[$key])) {
             $edges[$key]['flag'] = $edges[$key]['flag'] | $direction;
@@ -875,7 +898,7 @@ class PluginArchiresArchires extends CommonGLPI
             'source' => $from,
             'target' => $to,
             'flag'   => $direction,
-            'label' => $label
+            'label' => $label,
         ];
     }
 
@@ -926,11 +949,11 @@ class PluginArchiresArchires extends CommonGLPI
 
         // Get relations of the current node
         $relations = $DB->request([
-            'FROM'   => PluginArchiresImpactRelation::getTable(),
+            'FROM'   => ImpactRelation::getTable(),
             'WHERE'  => [
                 'itemtype_' . $target => get_class($node),
-                'items_id_' . $target => $node->fields['id']
-            ]
+                'items_id_' . $target => $node->fields['id'],
+            ],
         ]);
 
         // Add current code to the graph if we found at least one impact relation
@@ -991,14 +1014,14 @@ class PluginArchiresArchires extends CommonGLPI
         }
     }
 
-    static function cronCreateNetworkArchitecture($task)
+    public static function cronCreateNetworkArchitecture($task)
     {
 
         ini_set("memory_limit", "-1");
         ini_set("max_execution_time", "0");
 
         $networkport = new NetworkPort();
-        $impactrelaction = new PluginArchiresImpactRelation();
+        $impactrelaction = new ImpactRelation();
 
         $itemtype = ['NetworkEquipment', 'Unmanaged', 'Computer', 'Phone', 'Peripheral'];
         $ports = $networkport->find(['itemtype' => $itemtype]);
@@ -1017,7 +1040,7 @@ class PluginArchiresArchires extends CommonGLPI
                         'itemtype_source' => $port['itemtype'],
                         'items_id_source' => $port['items_id'],
                         'itemtype_impacted' => $itemtype_impacted,
-                        'items_id_impacted' => $items_id_impacted
+                        'items_id_impacted' => $items_id_impacted,
                     ]);
                 }
             }
@@ -1034,14 +1057,15 @@ class PluginArchiresArchires extends CommonGLPI
                         'itemtype_source' => $itemtype_source,
                         'items_id_source' => $items_id_source,
                         'itemtype_impacted' => $port['itemtype'],
-                        'items_id_impacted' => $port['items_id']
+                        'items_id_impacted' => $port['items_id'],
                     ]);
                 }
             }
         }
     }
 
-    static function install(Migration $mig) {
+    public static function install(Migration $mig)
+    {
         global $DB;
 
         $table = 'glpi_plugin_archires_impactrelations';
@@ -1057,8 +1081,7 @@ class PluginArchiresArchires extends CommonGLPI
   UNIQUE KEY `unicity` (`itemtype_source`,`items_id_source`,`itemtype_impacted`,`items_id_impacted`),
   KEY `impacted_asset` (`itemtype_impacted`,`items_id_impacted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;";
-            $DB->doQueryOrDie($query, __('Error in creating glpi_plugin_archires_impactrelations').
-                "<br>".$DB->error());
+            $DB->doQuery($query);
 
 
             $query = "CREATE TABLE `glpi_plugin_archires_impactcompounds` (
@@ -1068,8 +1091,7 @@ class PluginArchiresArchires extends CommonGLPI
   PRIMARY KEY (`id`),
   KEY `name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;";
-            $DB->doQueryOrDie($query, __('Error in creating glpi_plugin_archires_impactcompounds').
-                "<br>".$DB->error());
+            $DB->doQuery($query);
 
             $query = "CREATE TABLE `glpi_plugin_archires_impactitems` (
             `id` int unsigned NOT NULL AUTO_INCREMENT,
@@ -1084,8 +1106,7 @@ class PluginArchiresArchires extends CommonGLPI
   KEY `parent_id` (`parent_id`),
   KEY `impactcontexts_id` (`impactcontexts_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;";
-            $DB->doQueryOrDie($query, __('Error in creating glpi_plugin_archires_impactitems').
-                "<br>".$DB->error());
+            $DB->doQuery($query);
 
             $query = "CREATE TABLE `glpi_plugin_archires_impactcontexts` (
             `id` int unsigned NOT NULL AUTO_INCREMENT,
@@ -1101,8 +1122,7 @@ class PluginArchiresArchires extends CommonGLPI
   `max_depth` int NOT NULL DEFAULT '5',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;";
-            $DB->doQueryOrDie($query, __('Error in creating glpi_plugin_archires_impactcontexts').
-                "<br>".$DB->error());
+            $DB->doQuery($query);
 
         }
 
@@ -1110,7 +1130,8 @@ class PluginArchiresArchires extends CommonGLPI
     }
 
 
-    static function uninstall() {
+    public static function uninstall()
+    {
         global $DB;
 
         if ($DB->tableExists('glpi_plugin_archires_impactrelations')) { //not installed

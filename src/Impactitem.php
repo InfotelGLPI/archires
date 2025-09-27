@@ -33,10 +33,13 @@
  * ---------------------------------------------------------------------
  */
 
+namespace GlpiPlugin\Archires;
+use CommonDBTM;
+
 /**
  * @since 9.5.0
  */
-class PluginArchiresImpactitem extends CommonDBTM
+class Impactitem extends CommonDBTM
 {
     /**
      * Find ImpactItem for a given CommonDBTM item
@@ -89,10 +92,10 @@ class PluginArchiresImpactitem extends CommonDBTM
 
         if (intval($max_depth) <= 0) {
            // If value is not valid, reset to default
-            $input['max_depth'] = PluginArchiresArchires::DEFAULT_DEPTH;
-        } else if ($max_depth >= PluginArchiresArchires::MAX_DEPTH && $max_depth != PluginArchiresArchires::NO_DEPTH_LIMIT) {
+            $input['max_depth'] = Archires::DEFAULT_DEPTH;
+        } else if ($max_depth >= Archires::MAX_DEPTH && $max_depth != Archires::NO_DEPTH_LIMIT) {
            // Set to no limit if greater than max
-            $input['max_depth'] = PluginArchiresArchires::NO_DEPTH_LIMIT;
+            $input['max_depth'] = Archires::NO_DEPTH_LIMIT;
         }
 
         return $input;

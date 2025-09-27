@@ -27,16 +27,29 @@
  --------------------------------------------------------------------------
  */
 
+namespace GlpiPlugin\Archires;
+
+use CommonGLPI;
+use DbUtils;
+use Html;
+use ProfileRight;
+use Session;
+
 if (!defined('GLPI_ROOT')) {
    die("Sorry. You can't access directly to this file");
 }
 
 /**
- * Class PluginarchiresProfile
+ * Class Profile
  */
-class PluginArchiresProfile extends Profile {
+class Profile extends \Profile {
 
    static $rightname = "profile";
+
+    public static function getIcon()
+    {
+        return "ti topology-star";
+    }
 
    /**
     * @param CommonGLPI $item
@@ -48,7 +61,7 @@ class PluginArchiresProfile extends Profile {
 
       if ($item->getType() == 'Profile' && $item->getField('interface') != 'helpdesk'
       ) {
-         return __('Network architecture', 'archires');
+         return self::createTabEntry(__('Network architecture', 'archires'));
       }
       return '';
    }
@@ -131,11 +144,11 @@ class PluginArchiresProfile extends Profile {
 
       echo "<div class='firstbloc'>";
       if (($canedit = Session::haveRightsOr(self::$rightname, array(CREATE, UPDATE, PURGE))) && $openform) {
-         $profile = new Profile();
+         $profile = new \Profile();
          echo "<form method='post' action='" . $profile->getFormURL() . "'>";
       }
 
-      $profile = new Profile();
+      $profile = new \Profile();
       $profile->getFromDB($profiles_id);
       if ($profile->getField('interface') == 'central') {
          $rights = $this->getAllRights();
@@ -161,8 +174,8 @@ class PluginArchiresProfile extends Profile {
     */
    static function getAllRights($all = false) {
       $rights = array(
-         array('itemtype' => 'PluginArchiresImpactcontext',
-               'label'    => PluginArchiresImpactcontext::getTypeName(2),
+         array('itemtype' => Impactcontext::class,
+               'label'    => Impactcontext::getTypeName(2),
                'field'    => 'plugin_archires'
          ),
       );

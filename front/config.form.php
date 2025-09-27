@@ -27,27 +27,28 @@
  --------------------------------------------------------------------------
  */
 
-include('../../../inc/includes.php');
+use GlpiPlugin\Archires\Config;
 
 $plugin = new Plugin();
+global $CFG_GLPI;
 
 if ($plugin->isActivated("archires")) {
 
     Session::checkRight("plugin_archires", UPDATE);
 
-    $config = new PluginArchiresConfig();
+    $config = new Config();
     if (isset($_POST["update"])) {
         $res = $config->update($_POST);
         Html::back();
     } else {
-        Html::header(PluginArchiresConfig::getTypeName(), '', "config", 'PluginArchiresConfig');
+        Html::header(Config::getTypeName(), '', "config", Config::class);
         $_GET['id'] = 1;
         $config->display($_GET);
         Html::footer();
     }
 } else {
-    Html::header(PluginArchiresConfig::getTypeName(), '', "config", 'PluginArchiresConfig');
-    echo "<div align='center'><br><br>";
+    Html::header(Config::getTypeName(), '', "config", Config::class);
+    echo "<div class='center'><br><br>";
     echo "<img src=\"" . $CFG_GLPI["root_doc"] . "/pics/warning.png\" alt=\"warning\"><br><br>";
     echo "<b>" . __('Please activate the plugin', 'archires') . "</b></div>";
 }

@@ -33,7 +33,7 @@
  * ---------------------------------------------------------------------
  */
 
-use Glpi\Event;
+use GlpiPlugin\Archires\Impactrelation;
 
 include('../../inc/includes.php');
 
@@ -44,7 +44,7 @@ global $DB, $GLPI_CACHE;
 $dbu = new DbUtils();
 
 $networkport = new NetworkPort();
-$impactrelaction = new PluginArchiresImpactRelation();
+$impactrelaction = new ImpactRelation();
 
 $itemtype = ['NetworkEquipment', 'Unmanaged', 'Computer', 'Phone', 'Peripheral'];
 $ports = $networkport->find(['itemtype' => $itemtype]);
