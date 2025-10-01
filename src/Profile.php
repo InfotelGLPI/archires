@@ -48,7 +48,7 @@ class Profile extends \Profile {
 
     public static function getIcon()
     {
-        return "ti topology-star";
+        return "ti ti-topology-star";
     }
 
    /**
