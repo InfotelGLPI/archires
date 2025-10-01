@@ -68,7 +68,6 @@ function plugin_version_archires()
         'version' => PLUGIN_ARCHIRES_VERSION,
         'license' => 'GPLv2+',
         'author' => "Xavier CAILLAUD",
-        'license' => 'GPLv2+',
         'homepage' => '',
         'requirements' => [
             'glpi' => [
