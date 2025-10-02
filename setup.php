@@ -30,7 +30,7 @@
 use GlpiPlugin\Archires\Archires;
 use GlpiPlugin\Archires\Profile;
 
-define('PLUGIN_ARCHIRES_VERSION', '1.1.0');
+define('PLUGIN_ARCHIRES_VERSION', '1.1.1');
 
 global $CFG_GLPI;
 
