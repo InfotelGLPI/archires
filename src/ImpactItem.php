@@ -35,12 +35,52 @@
 
 namespace GlpiPlugin\Archires;
 use CommonDBTM;
+use DBConnection;
+use Migration;
 
 /**
  * @since 9.5.0
  */
 class ImpactItem extends CommonDBTM
 {
+
+    public static function install(Migration $migration)
+    {
+        global $DB;
+
+        $table  = self::getTable();
+        $default_charset   = DBConnection::getDefaultCharset();
+        $default_collation = DBConnection::getDefaultCollation();
+        $default_key_sign  = DBConnection::getDefaultPrimaryKeySignOption();
+
+        if (!$DB->tableExists($table)) { //not installed
+
+            $query = "CREATE TABLE `$table` (
+                        `id` int {$default_key_sign} NOT NULL auto_increment,
+                        `itemtype` varchar(255) NOT NULL DEFAULT '',
+                        `items_id` int {$default_key_sign} NOT NULL DEFAULT '0',
+                        `parent_id` int {$default_key_sign} NOT NULL DEFAULT '0',
+                        `impactcontexts_id` int {$default_key_sign} NOT NULL DEFAULT '0',
+                        `is_slave` tinyint NOT NULL DEFAULT '1',
+                        PRIMARY KEY (`id`),
+                        UNIQUE KEY `unicity` (`itemtype`,`items_id`),
+                        KEY `source` (`itemtype`,`items_id`),
+                        KEY `parent_id` (`parent_id`),
+                        KEY `impactcontexts_id` (`impactcontexts_id`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET={$default_charset} COLLATE={$default_collation} ROW_FORMAT=DYNAMIC;";
+            $DB->doQuery($query);
+        }
+        return true;
+    }
+
+    public static function uninstall()
+    {
+        global $DB;
+
+        $DB->dropTable(self::getTable(), true);
+    }
+
+
     /**
      * Find ImpactItem for a given CommonDBTM item
      *

@@ -36,10 +36,43 @@
 namespace GlpiPlugin\Archires;
 
 use CommonDBTM;
+use DBConnection;
+use Migration;
 
 /**
  * @since 9.5.0
  */
 class ImpactCompound extends CommonDBTM
 {
+    public static function install(Migration $migration)
+    {
+        global $DB;
+
+        $table = 'glpi_plugin_archires_impactrelations';
+        $default_charset   = DBConnection::getDefaultCharset();
+        $default_collation = DBConnection::getDefaultCollation();
+        $default_key_sign  = DBConnection::getDefaultPrimaryKeySignOption();
+
+        if (!$DB->tableExists($table)) { //not installed
+
+            $query = "CREATE TABLE `$table` (
+                        `id` int {$default_key_sign} NOT NULL AUTO_INCREMENT,
+                        `name` varchar(255) DEFAULT '',
+                        `color` varchar(255) NOT NULL DEFAULT '',
+                        PRIMARY KEY (`id`),
+                        KEY `name` (`name`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET={$default_charset} COLLATE={$default_collation} ROW_FORMAT=DYNAMIC;";
+            $DB->doQuery($query);
+        }
+
+        return true;
+    }
+
+    public static function uninstall()
+    {
+        global $DB;
+
+        $DB->dropTable(self::getTable(), true);
+    }
+
 }

@@ -1,4 +1,5 @@
 <?php
+
 /*
  * @version $Id: HEADER 15930 2011-10-30 15:47:55Z tsmr $
  -------------------------------------------------------------------------
@@ -28,6 +29,10 @@
  */
 
 use GlpiPlugin\Archires\Archires;
+use GlpiPlugin\Archires\ImpactCompound;
+use GlpiPlugin\Archires\ImpactContext;
+use GlpiPlugin\Archires\ImpactItem;
+use GlpiPlugin\Archires\ImpactRelation;
 use GlpiPlugin\Archires\Profile;
 
 /**
@@ -35,12 +40,19 @@ use GlpiPlugin\Archires\Profile;
  */
 function plugin_archires_install()
 {
-    $migration = new Migration(100);
+    $migration = new Migration(PLUGIN_ARCHIRES_VERSION);
 
-    Archires::install($migration);
+    ImpactCompound::install($migration);
+    ImpactContext::install($migration);
+    ImpactItem::install($migration);
+    ImpactRelation::install($migration);
 
-    CronTask::Register(Archires::class, 'CreateNetworkArchitecture',
-        WEEK_TIMESTAMP, ['state' => CronTask::STATE_DISABLE]);
+    CronTask::Register(
+        Archires::class,
+        'CreateNetworkArchitecture',
+        WEEK_TIMESTAMP,
+        ['state' => CronTask::STATE_DISABLE]
+    );
 
     Profile::initProfile();
     Profile::createFirstAccess($_SESSION['glpiactiveprofile']['id']);
@@ -54,18 +66,21 @@ function plugin_archires_install()
 function plugin_archires_uninstall()
 {
 
-    Archires::uninstall();
+    ImpactCompound::uninstall();
+    ImpactContext::uninstall();
+    ImpactItem::uninstall();
+    ImpactRelation::uninstall();
+
 
     CronTask::unregister("archires");
 
     //Delete rights associated with the plugin
     $profileRight = new ProfileRight();
     foreach (Profile::getAllRights() as $right) {
-        $profileRight->deleteByCriteria(array('name' => $right['field']));
+        $profileRight->deleteByCriteria(['name' => $right['field']]);
     }
 
     Profile::removeRightsFromSession();
 
     return true;
 }
-

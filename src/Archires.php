@@ -39,7 +39,6 @@ use Glpi\Search\SearchOption;
 use Html;
 use Impact;
 use Infocom;
-use Migration;
 use NetworkPort;
 use NetworkPort_NetworkPort;
 use Problem;
@@ -1050,95 +1049,5 @@ class Archires extends CommonGLPI
                 }
             }
         }
-    }
-
-    public static function install(Migration $mig)
-    {
-        global $DB;
-
-        $table = 'glpi_plugin_archires_impactrelations';
-        if (!$DB->tableExists($table)) { //not installed
-
-            $query = "CREATE TABLE `glpi_plugin_archires_impactrelations` (
-            `id` int unsigned NOT NULL AUTO_INCREMENT,
-            `name` varchar(255) NOT NULL DEFAULT '',
-  `itemtype_source` varchar(255) NOT NULL DEFAULT '',
-  `items_id_source` int unsigned NOT NULL DEFAULT '0',
-  `itemtype_impacted` varchar(255) NOT NULL DEFAULT '',
-  `items_id_impacted` int unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `unicity` (`itemtype_source`,`items_id_source`,`itemtype_impacted`,`items_id_impacted`),
-  KEY `impacted_asset` (`itemtype_impacted`,`items_id_impacted`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;";
-            $DB->doQuery($query);
-
-
-            $query = "CREATE TABLE `glpi_plugin_archires_impactcompounds` (
-            `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) DEFAULT '',
-  `color` varchar(255) NOT NULL DEFAULT '',
-  PRIMARY KEY (`id`),
-  KEY `name` (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;";
-            $DB->doQuery($query);
-
-            $query = "CREATE TABLE `glpi_plugin_archires_impactitems` (
-            `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `itemtype` varchar(255) NOT NULL DEFAULT '',
-  `items_id` int unsigned NOT NULL DEFAULT '0',
-  `parent_id` int unsigned NOT NULL DEFAULT '0',
-  `impactcontexts_id` int unsigned NOT NULL DEFAULT '0',
-  `is_slave` tinyint NOT NULL DEFAULT '1',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `unicity` (`itemtype`,`items_id`),
-  KEY `source` (`itemtype`,`items_id`),
-  KEY `parent_id` (`parent_id`),
-  KEY `impactcontexts_id` (`impactcontexts_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;";
-            $DB->doQuery($query);
-
-            $query = "CREATE TABLE `glpi_plugin_archires_impactcontexts` (
-            `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `positions` mediumtext NOT NULL,
-  `zoom` float NOT NULL DEFAULT '0',
-  `pan_x` float NOT NULL DEFAULT '0',
-  `pan_y` float NOT NULL DEFAULT '0',
-  `impact_color` varchar(255) NOT NULL DEFAULT '',
-  `depends_color` varchar(255) NOT NULL DEFAULT '',
-  `impact_and_depends_color` varchar(255) NOT NULL DEFAULT '',
-  `show_depends` tinyint NOT NULL DEFAULT '1',
-  `show_impact` tinyint NOT NULL DEFAULT '1',
-  `max_depth` int NOT NULL DEFAULT '5',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;";
-            $DB->doQuery($query);
-        }
-        if ($DB->tableExists("glpi_plugin_archires_impactrelations")
-            && !$DB->fieldExists("glpi_plugin_archires_impactrelations", "name")) {
-            $query = "ALTER TABLE `glpi_plugin_archires_impactrelations` ADD `name` varchar(255) NOT NULL DEFAULT '' AFTER `id`;";
-            $DB->doQuery($query);
-        }
-
-        return true;
-    }
-
-
-    public static function uninstall()
-    {
-        global $DB;
-
-        if ($DB->tableExists('glpi_plugin_archires_impactrelations')) { //not installed
-            $DB->dropTable("glpi_plugin_archires_impactrelations");
-        }
-        if ($DB->tableExists('glpi_plugin_archires_impactcompounds')) { //not installed
-            $DB->dropTable("glpi_plugin_archires_impactcompounds");
-        }
-        if ($DB->tableExists('glpi_plugin_archires_impactitems')) { //not installed
-            $DB->dropTable("glpi_plugin_archires_impactitems");
-        }
-        if ($DB->tableExists('glpi_plugin_archires_impactcontexts')) { //not installed
-            $DB->dropTable("glpi_plugin_archires_impactcontexts");
-        }
-        return true;
     }
 }

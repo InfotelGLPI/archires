@@ -36,7 +36,9 @@
 namespace GlpiPlugin\Archires;
 
 use CommonDBRelation;
+use DBConnection;
 use Impact;
+use Migration;
 
 /**
  * @since 9.5.0
@@ -48,6 +50,42 @@ class ImpactRelation extends CommonDBRelation
     public static $items_id_1          = 'items_id_source';
     public static $itemtype_2          = 'itemtype_impacted';
     public static $items_id_2          = 'items_id_impacted';
+
+
+    public static function install(Migration $migration)
+    {
+        global $DB;
+
+        $table  = self::getTable();
+        $default_charset   = DBConnection::getDefaultCharset();
+        $default_collation = DBConnection::getDefaultCollation();
+        $default_key_sign  = DBConnection::getDefaultPrimaryKeySignOption();
+
+        if (!$DB->tableExists($table)) { //not installed
+
+            $query = "CREATE TABLE `$table` (
+                        `id` int {$default_key_sign} NOT NULL AUTO_INCREMENT,
+                        `name` varchar(255) NOT NULL DEFAULT '',
+                        `itemtype_source` varchar(255) NOT NULL DEFAULT '',
+                        `items_id_source` int {$default_key_sign} NOT NULL DEFAULT '0',
+                        `itemtype_impacted` varchar(255) NOT NULL DEFAULT '',
+                        `items_id_impacted` int {$default_key_sign} NOT NULL DEFAULT '0',
+                        PRIMARY KEY (`id`),
+                        UNIQUE KEY `unicity` (`itemtype_source`,`items_id_source`,`itemtype_impacted`,`items_id_impacted`),
+                        KEY `impacted_asset` (`itemtype_impacted`,`items_id_impacted`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET={$default_charset} COLLATE={$default_collation} ROW_FORMAT=DYNAMIC;";
+            $DB->doQuery($query);
+        }
+
+        return true;
+    }
+
+    public static function uninstall()
+    {
+        global $DB;
+
+        $DB->dropTable(self::getTable(), true);
+    }
 
     public function prepareInputForAdd($input)
     {

@@ -36,6 +36,8 @@
 namespace GlpiPlugin\Archires;
 
 use CommonDBTM;
+use DBConnection;
+use Migration;
 
 /**
  * @since 9.5.0
@@ -55,5 +57,43 @@ class ImpactContext extends CommonDBTM
         $exist = $impactContext->getFromDB($item->fields['impactcontexts_id']);
 
         return $exist ? $impactContext : false;
+    }
+
+    public static function install(Migration $migration)
+    {
+        global $DB;
+
+        $table  = self::getTable();
+        $default_charset   = DBConnection::getDefaultCharset();
+        $default_collation = DBConnection::getDefaultCollation();
+        $default_key_sign  = DBConnection::getDefaultPrimaryKeySignOption();
+
+        if (!$DB->tableExists($table)) { //not installed
+
+            $query = "CREATE TABLE `$table` (
+                        `id` int {$default_key_sign} NOT NULL AUTO_INCREMENT,
+                        `positions` mediumtext NOT NULL,
+                        `zoom` float NOT NULL DEFAULT '0',
+                        `pan_x` float NOT NULL DEFAULT '0',
+                        `pan_y` float NOT NULL DEFAULT '0',
+                        `impact_color` varchar(255) NOT NULL DEFAULT '',
+                        `depends_color` varchar(255) NOT NULL DEFAULT '',
+                        `impact_and_depends_color` varchar(255) NOT NULL DEFAULT '',
+                        `show_depends` tinyint NOT NULL DEFAULT '1',
+                        `show_impact` tinyint NOT NULL DEFAULT '1',
+                        `max_depth` int NOT NULL DEFAULT '5',
+                        PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET={$default_charset} COLLATE={$default_collation} ROW_FORMAT=DYNAMIC;";
+            $DB->doQuery($query);
+        }
+
+        return true;
+    }
+
+    public static function uninstall()
+    {
+        global $DB;
+
+        $DB->dropTable(self::getTable(), true);
     }
 }
