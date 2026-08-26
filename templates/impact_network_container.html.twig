@@ -1,0 +1,134 @@
+{#
+ # -------------------------------------------------------------------------
+ # archires plugin for GLPI
+ # -------------------------------------------------------------------------
+ #
+ # LICENSE
+ #
+ # This file is part of archires.
+ #
+ # archires is free software; you can redistribute it and/or modify
+ # it under the terms of the GNU General Public License as published by
+ # the Free Software Foundation; either version 3 of the License, or
+ # (at your option) any later version.
+ #
+ # archires is distributed in the hope that it will be useful,
+ # but WITHOUT ANY WARRANTY; without even the implied warranty of
+ # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ # GNU General Public License for more details.
+ #
+ # You should have received a copy of the GNU General Public License
+ # along with archires. If not, see <http://www.gnu.org/licenses/>.
+ # -------------------------------------------------------------------------
+ # @copyright Copyright (C) 2009-2026 by archires plugin team.
+ # @license   AGPLv3 https://www.gnu.org/licenses/agpl-3.0.html
+ # @link      https://github.com/InfotelGLPI/archires
+ # --------------------------------------------------------------------------
+ #}
+
+<form name="{{ form_name }}" action="{{ action }}" method="post" class="no-track">
+    <table class="tab_cadre_fixe network-table">
+        <tr><td class="network-parent">
+            <span id="help_text"></span>
+
+            <div id="network_container"></div>
+            <img class="impact-drop-preview">
+
+            <div class="impact-side">
+                <div class="impact-side-panel">
+
+                    <div class="impact-side-add-node">
+                        <h3>{{ __('Add assets') }}</h3>
+                        <div class="impact-side-select-itemtype">
+                            {{ filter_itemtypes_input|raw }}
+                            <div class="impact-side-filter-itemtypes-items">
+                                {% for type in asset_types %}
+                                    <div class="impact-side-filter-itemtypes-item">
+                                        <h4><img class="impact-side-icon" src="{{ type.icon }}" title="{{ type.name }}" data-itemtype="{{ type.itemtype }}">
+                                        <span>{{ type.name }}</span></h4>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="impact-side-search">
+                            <h4><i class="ti ti-chevron-left"></i><img><span></span></h4>
+                            {{ filter_assets_input|raw }}
+
+                            <div class="impact-side-search-panel">
+                                <div class="impact-side-search-results"></div>
+
+                                <div class="impact-side-search-more">
+                                    <h4><i class="ti ti-chevron-down"></i>{{ __('More...') }}</h4>
+                                </div>
+
+                                <div class="impact-side-search-no-results">
+                                    <p>{{ __('No results') }}</p>
+                                </div>
+
+                                <div class="impact-side-search-spinner">
+                                    <span class="spinner-border spinner-border m-3" role="status" aria-hidden="true"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="impact-side-settings">
+                        <h3>{{ __('Settings') }}</h3>
+
+                        <h4>{{ __('Visibility') }}</h4>
+                        <div class="impact-side-settings-item">
+                            {{ toggle_impact|raw }}
+                            <span class="impact-checkbox-label">{{ __('Show impact') }}</span>
+                        </div>
+
+                        <div class="impact-side-settings-item">
+                            {{ toggle_depends|raw }}
+                            <span class="impact-checkbox-label">{{ __('Show depends') }}</span>
+                        </div>
+
+                        <h4>{{ __('Colors') }}</h4>
+                        <div class="impact-side-settings-item">
+                            {{ color_fields.depends_color|raw }}
+                            <span class="impact-checkbox-label">{{ __('Depends') }}</span>
+                        </div>
+
+                        <div class="impact-side-settings-item">
+                            {{ color_fields.impact_color|raw }}
+                            <span class="impact-checkbox-label">{{ __('Impact') }}</span>
+                        </div>
+
+                        <div class="impact-side-settings-item">
+                            {{ color_fields.impact_and_depends_color|raw }}
+                            <span class="impact-checkbox-label">{{ __('Impact and depends') }}</span>
+                        </div>
+
+                        <h4>{{ __('Max depth') }}</h4>
+                        <div class="impact-side-settings-item">
+                            <input id="max_depth" type="range" class="impact-range" min="1" max="10" step="1" value="5"><span id="max_depth_view" class="impact-checkbox-label"></span>
+                        </div>
+                    </div>
+
+                    <div class="impact-side-search-footer"></div>
+                </div>
+
+                <ul class="fs-1">
+                    <li id="save_impact" title="{{ __('Save') }}"><i class="ti ti-device-floppy"></i></li>
+                    <li id="impact_undo" class="impact-disabled" title="{{ __('Undo') }}"><i class="ti ti-arrow-back-up"></i></li>
+                    <li id="impact_redo" class="impact-disabled" title="{{ __('Redo') }}"><i class="ti ti-arrow-forward-up"></i></li>
+                    <li class="impact-separator"></li>
+                    <li id="add_node" title="{{ __('Add asset') }}"><i class="ti ti-plus"></i></li>
+                    <li id="add_edge" title="{{ __('Add relation') }}"><i class="ti ti-line"></i></li>
+                    <li id="add_compound" title="{{ __('Add group') }}"><i class="ti ti-augmented-reality"></i></li>
+                    <li id="delete_element" title="{{ __('Delete element') }}"><i class="ti ti-trash"></i></li>
+                    <li class="impact-separator"></li>
+                    <li id="export_graph" title="{{ __('Download') }}"><i class="ti ti-download"></i></li>
+                    <li id="toggle_fullscreen" title="{{ __('Fullscreen') }}"><i class="ti ti-maximize"></i></li>
+                    <li id="impact_settings" title="{{ __('Settings') }}"><i class="ti ti-adjustments"></i></li>
+                </ul>
+                <span class="impact-side-toggle"><i class="ti ti-chevron-left"></i></span>
+            </div>
+        </td></tr>
+    </table>
+    <input type="hidden" name="_glpi_csrf_token" value="{{ csrf_token() }}" />
+</form>

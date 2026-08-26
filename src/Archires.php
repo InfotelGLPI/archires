@@ -1,31 +1,31 @@
 <?php
 
-/*
- * @version $Id: HEADER 15930 2011-10-30 15:47:55Z tsmr $
- -------------------------------------------------------------------------
- archires plugin for GLPI
- Copyright (C) 2009-2017 by the archires Development Team.
-
- https://github.com/InfotelGLPI/archires
- -------------------------------------------------------------------------
-
- LICENSE
-
- This file is part of archires.
-
- archires is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation; either version 2 of the License, or
- (at your option) any later version.
-
- archires is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with archires. If not, see <http://www.gnu.org/licenses/>.
- --------------------------------------------------------------------------
+/**
+ * -------------------------------------------------------------------------
+ * archires plugin for GLPI
+ * -------------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of archires.
+ *
+ * archires is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * archires is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with archires. If not, see <http://www.gnu.org/licenses/>.
+ * -------------------------------------------------------------------------
+ * @copyright Copyright (C) 2009-2026 by archires plugin team.
+ * @license   AGPLv3 https://www.gnu.org/licenses/agpl-3.0.html
+ * @link      https://github.com/InfotelGLPI/archires
+ * --------------------------------------------------------------------------
  */
 
 namespace GlpiPlugin\Archires;
@@ -330,162 +330,66 @@ class Archires extends CommonGLPI
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
 
-        $action = PLUGIN_ARCHIRES_WEBDIR . '/ajax/archires.php';
-        $formName = "form_impact_network";
-
-        echo "<form name=\"$formName\" action=\"$action\" method=\"post\" class='no-track'>";
-        echo "<table class='tab_cadre_fixe network-table'>";
-        echo '<tr><td class="network-parent">';
-        echo '<span id="help_text"></span>';
-
-        echo '<div id="network_container"></div>';
-        echo '<img class="impact-drop-preview">';
-
-        echo '<div class="impact-side">';
-
-        echo '<div class="impact-side-panel">';
-
-        echo '<div class="impact-side-add-node">';
-        echo '<h3>' . __s('Add assets') . '</h3>';
-        echo '<div class="impact-side-select-itemtype">';
-
-        echo Html::input("impact-side-filter-itemtypes", [
-            'id' => 'impact-side-filter-itemtypes',
-            'placeholder' => __('Filter itemtypes...'),
-        ]);
-
-        echo '<div class="impact-side-filter-itemtypes-items">';
+        // Build the itemtype picker data: keep only the asset types the current user
+        // can READ and that are enabled for the impact graph, sorted by translated name.
         $itemtypes = array_keys($CFG_GLPI["impact_asset_types"]);
-        // Sort by translated itemtypes
         usort($itemtypes, function ($a, $b) {
             /** @var class-string $a
              * @var class-string $b
              */
             return strcasecmp($a::getTypeName(), $b::getTypeName());
         });
+
+        $asset_types = [];
         foreach ($itemtypes as $itemtype) {
             /** @var class-string $itemtype */
-            // Do not display this itemtype if the user doesn't have READ rights
             if (!Session::haveRight($itemtype::$rightname, READ)) {
                 continue;
             }
-
-            // Skip if not enabled
             if (!self::isEnabled($itemtype)) {
                 continue;
             }
-
-            $icon = \Impact::getImpactIcon($itemtype);
-
-            echo '<div class="impact-side-filter-itemtypes-item">';
-            echo '<h4><img class="impact-side-icon" src="' . htmlescape($icon) . '" title="' . htmlescape(
-                    $itemtype::getTypeName()
-                ) . '" data-itemtype="' . htmlescape($itemtype) . '">';
-            echo "<span>" . htmlescape($itemtype::getTypeName()) . "</span></h4>";
-            echo '</div>'; // impact-side-filter-itemtypes-item
+            $asset_types[] = [
+                'itemtype' => $itemtype,
+                'name'     => $itemtype::getTypeName(),
+                'icon'     => \Impact::getImpactIcon($itemtype),
+            ];
         }
-        echo '</div>'; // impact-side-filter-itemtypes-items
-        echo '</div>'; // <div class="impact-side-select-itemtype">
 
-        echo '<div class="impact-side-search">';
-        echo '<h4><i class="ti ti-chevron-left"></i><img><span></span></h4>';
-        echo Html::input("impact-side-filter-assets", [
-            'id' => 'impact-side-filter-assets',
-            'placeholder' => __('Filter assets...'),
+        // Capture the GLPI form helpers as raw HTML slots: Html::input/getCheckbox
+        // return markup, Html::showColorField echoes it (hence the ob_start capture).
+        // The template prints these through |raw and escapes everything else.
+        $color_fields = [];
+        foreach (['depends_color', 'impact_color', 'impact_and_depends_color'] as $color) {
+            ob_start();
+            Html::showColorField($color, []);
+            $color_fields[$color] = ob_get_clean();
+        }
+
+        TemplateRenderer::getInstance()->display('@archires/impact_network_container.html.twig', [
+            'action'                 => PLUGIN_ARCHIRES_WEBDIR . '/ajax/archires.php',
+            'form_name'              => 'form_impact_network',
+            'asset_types'            => $asset_types,
+            'filter_itemtypes_input' => Html::input("impact-side-filter-itemtypes", [
+                'id'          => 'impact-side-filter-itemtypes',
+                'placeholder' => __('Filter itemtypes...'),
+            ]),
+            'filter_assets_input'    => Html::input("impact-side-filter-assets", [
+                'id'          => 'impact-side-filter-assets',
+                'placeholder' => __('Filter assets...'),
+            ]),
+            'toggle_impact'          => Html::getCheckbox([
+                'id'      => "toggle_impact",
+                'name'    => "toggle_impact",
+                'checked' => "true",
+            ]),
+            'toggle_depends'         => Html::getCheckbox([
+                'id'      => "toggle_depends",
+                'name'    => "toggle_depends",
+                'checked' => "true",
+            ]),
+            'color_fields'           => $color_fields,
         ]);
-
-        echo '<div class="impact-side-search-panel">';
-        echo '<div class="impact-side-search-results"></div>';
-
-        echo '<div class="impact-side-search-more">';
-        echo '<h4><i class="ti ti-chevron-down"></i>' . __s("More...") . '</h4>';
-        echo '</div>'; // <div class="impact-side-search-more">
-
-        echo '<div class="impact-side-search-no-results">';
-        echo '<p>' . __s("No results") . '</p>';
-        echo '</div>'; // <div class="impact-side-search-no-results">
-
-        echo '<div class="impact-side-search-spinner">';
-        echo '<span class="spinner-border spinner-border m-3" role="status" aria-hidden="true"></span>';
-        echo '</div>'; // <div class="impact-side-search-spinner">
-
-        echo '</div>'; // <div class="impact-side-search-panel">
-
-        echo '</div>'; // <div class="impact-side-search">
-
-        echo '</div>'; // div class="impact-side-add-node">
-
-        echo '<div class="impact-side-settings">';
-        echo '<h3>' . __s('Settings') . '</h3>';
-
-        echo '<h4>' . __s('Visibility') . '</h4>';
-        echo '<div class="impact-side-settings-item">';
-        echo Html::getCheckbox([
-            'id' => "toggle_impact",
-            'name' => "toggle_impact",
-            'checked' => "true",
-        ]);
-        echo '<span class="impact-checkbox-label">' . __s("Show impact") . '</span>';
-        echo '</div>';
-
-        echo '<div class="impact-side-settings-item">';
-        echo Html::getCheckbox([
-            'id' => "toggle_depends",
-            'name' => "toggle_depends",
-            'checked' => "true",
-        ]);
-        echo '<span class="impact-checkbox-label">' . __s("Show depends") . '</span>';
-        echo '</div>';
-
-        echo '<h4>' . __s('Colors') . '</h4>';
-        echo '<div class="impact-side-settings-item">';
-        Html::showColorField("depends_color", []);
-        echo '<span class="impact-checkbox-label">' . __s("Depends") . '</span>';
-        echo '</div>';
-
-        echo '<div class="impact-side-settings-item">';
-        Html::showColorField("impact_color", []);
-        echo '<span class="impact-checkbox-label">' . __s("Impact") . '</span>';
-        echo '</div>';
-
-        echo '<div class="impact-side-settings-item">';
-        Html::showColorField("impact_and_depends_color", []);
-        echo '<span class="impact-checkbox-label">' . __s("Impact and depends") . '</span>';
-        echo '</div>';
-
-        echo '<h4>' . __s('Max depth') . '</h4>';
-        echo '<div class="impact-side-settings-item">';
-        echo '<input id="max_depth" type="range" class="impact-range" min="1" max ="10" step="1" value="5"><span id="max_depth_view" class="impact-checkbox-label"></span>';
-        echo '</div>';
-
-        echo '</div>'; // div class="impact-side-settings">
-
-        echo '<div class="impact-side-search-footer"></div>';
-        echo '</div>'; // div class="impact-side-panel">
-
-        echo '<ul class="fs-1">';
-        echo '<li id="save_impact" title="' . __s("Save") . '"><i class="ti ti-device-floppy"></i></li>';
-        echo '<li id="impact_undo" class="impact-disabled" title="' . __s(
-                "Undo"
-            ) . '"><i class="ti ti-arrow-back-up"></i></li>';
-        echo '<li id="impact_redo" class="impact-disabled" title="' . __s(
-                "Redo"
-            ) . '"><i class="ti ti-arrow-forward-up"></i></li>';
-        echo '<li class="impact-separator"></li>';
-        echo '<li id="add_node" title="' . __s("Add asset") . '"><i class="ti ti-plus"></i></li>';
-        echo '<li id="add_edge" title="' . __s("Add relation") . '"><i class="ti ti-line"></i></li>';
-        echo '<li id="add_compound" title="' . __s("Add group") . '"><i class="ti ti-augmented-reality"></i></li>';
-        echo '<li id="delete_element" title="' . __s("Delete element") . '"><i class="ti ti-trash"></i></li>';
-        echo '<li class="impact-separator"></li>';
-        echo '<li id="export_graph" title="' . __s("Download") . '"><i class="ti ti-download"></i></li>';
-        echo '<li id="toggle_fullscreen" title="' . __s("Fullscreen") . '"><i class="ti ti-maximize"></i></li>';
-        echo '<li id="impact_settings" title="' . __s("Settings") . '"><i class="ti ti-adjustments"></i></li>';
-        echo '</ul>';
-        echo '<span class="impact-side-toggle"><i class="ti ti-chevron-left"></i></span>';
-        echo '</div>'; // <div class="impact-side impact-side-expanded">
-        echo "</td></tr>";
-        echo "</table>";
-        Html::closeForm();
     }
 
     /**
@@ -500,17 +404,10 @@ class Archires extends CommonGLPI
         string $params,
         bool $readonly
     ) {
-        echo '<div class="impact-header">';
-        echo "<h2>" . __('Network architecture', 'archires') . "</h2>";
-        echo "<div id='switchview'>";
-        //        echo "<a id='sviewlist' href='#list'><i class='pointer ti ti-list' title='" . __('View as list') . "'></i></a>";
-        echo "<a id='sviewgraph' href='#graph'><i class='pointer ti ti-hierarchy-2' title='" . __(
-                'View graphical representation'
-            ) . "'></i></a>";
-        echo "</div>";
-        echo "</div>";
+        TemplateRenderer::getInstance()->display('@archires/impact_header.html.twig');
 
-        // View selection
+        // View selection — this block depends on the runtime graph/params/readonly
+        // values injected into GLPIImpact, so it stays a PHP-built script block.
         echo Html::scriptBlock(
             "
          function showGraphView() {

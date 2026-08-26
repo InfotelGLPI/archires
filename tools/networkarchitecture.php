@@ -35,8 +35,20 @@
 
 use GlpiPlugin\Archires\ImpactRelation;
 
+// CLI-only maintenance script: it rebuilds every impact relation from the network
+// topology, i.e. unauthenticated mass writes with resource limits lifted. Refuse to
+// run over HTTP (checked BEFORE the bootstrap) so it cannot be abused as an anonymous
+// data-mutation / resource-exhaustion oracle on a legacy deployment whose docroot is
+// the plugin root instead of public/. This duplicates the registered CronTask
+// Archires::cronCreateNetworkArchitecture(); prefer that for scheduled runs.
+if (PHP_SAPI !== 'cli') {
+    die("This script can only be run from the command line.\n");
+}
+
 include('../../inc/includes.php');
 
+// Safe now that execution is restricted to the CLI: a full-topology rebuild is a
+// legitimate long-running batch, and there is no HTTP DoS vector left to abuse.
 ini_set("memory_limit", "-1");
 ini_set("max_execution_time", "0");
 

@@ -1,36 +1,38 @@
 <?php
-/*
- * @version $Id: HEADER 15930 2011-10-30 15:47:55Z tsmr $
- -------------------------------------------------------------------------
- archires plugin for GLPI
- Copyright (C) 2009-2017 by the archires Development Team.
 
- https://github.com/InfotelGLPI/archires
- -------------------------------------------------------------------------
-
- LICENSE
-
- This file is part of archires.
-
- archires is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation; either version 2 of the License, or
- (at your option) any later version.
-
- archires is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with archires. If not, see <http://www.gnu.org/licenses/>.
- --------------------------------------------------------------------------
+/**
+ * -------------------------------------------------------------------------
+ * archires plugin for GLPI
+ * -------------------------------------------------------------------------
+ *
+ * LICENSE
+ *
+ * This file is part of archires.
+ *
+ * archires is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * archires is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with archires. If not, see <http://www.gnu.org/licenses/>.
+ * -------------------------------------------------------------------------
+ * @copyright Copyright (C) 2009-2026 by archires plugin team.
+ * @license   AGPLv3 https://www.gnu.org/licenses/agpl-3.0.html
+ * @link      https://github.com/InfotelGLPI/archires
+ * --------------------------------------------------------------------------
  */
 
 namespace GlpiPlugin\Archires;
 
 use CommonGLPI;
 use DbUtils;
+use Glpi\Application\View\TemplateRenderer;
 use Html;
 use ProfileRight;
 use Session;
@@ -66,27 +68,37 @@ class Profile extends \Profile {
       return '';
    }
 
-   /**
-    * @param CommonGLPI $item
-    * @param int        $tabnum
-    * @param int        $withtemplate
-    *
-    * @return bool
-    */
-   static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0) {
+    /**
+     * @param CommonGLPI $item
+     * @param int $tabnum
+     * @param int $withtemplate
+     *
+     * @return bool
+     */
+    public static function displayTabContentForItem(
+        CommonGLPI $item,
+        $tabnum = 1,
+        $withtemplate = 0
+    ) {
+        if (!$item instanceof \Profile || !self::canView()) {
+            return false;
+        }
 
-      if ($item->getType() == 'Profile') {
-         $ID   = $item->getID();
-         $prof = new self();
-          self::addDefaultProfileInfos(
-              $ID,
-              ['plugin_archires'               => 0]
-          );
+        $profile = new \Profile();
+        $profile->getFromDB($item->getID());
 
-         $prof->showForm($ID);
-      }
-      return true;
-   }
+        $rights = self::getAllRights(true);
+
+        $twig = TemplateRenderer::getInstance();
+        $twig->display('@archires/profile.html.twig', [
+            'id' => $item->getID(),
+            'profile' => $profile,
+            'title' => self::getTypeName(Session::getPluralNumber()),
+            'rights' => $rights,
+        ]);
+
+        return true;
+    }
 
    /**
     * @param $ID
@@ -129,43 +141,7 @@ class Profile extends \Profile {
       }
    }
 
-   /**
-    * Show profile form
-    *
-    * @param int  $profiles_id
-    * @param bool $openform
-    * @param bool $closeform
-    *
-    * @return nothing
-    * @internal param int $items_id id of the profile
-    * @internal param value $target url of target
-    */
-   function showForm($profiles_id = 0, $openform = TRUE, $closeform = TRUE) {
 
-      echo "<div class='firstbloc'>";
-      if (($canedit = Session::haveRightsOr(self::$rightname, array(CREATE, UPDATE, PURGE))) && $openform) {
-         $profile = new \Profile();
-         echo "<form method='post' action='" . $profile->getFormURL() . "'>";
-      }
-
-      $profile = new \Profile();
-      $profile->getFromDB($profiles_id);
-      if ($profile->getField('interface') == 'central') {
-         $rights = $this->getAllRights();
-         $profile->displayRightsChoiceMatrix($rights, array('canedit'       => $canedit,
-                                                            'default_class' => 'tab_bg_2',
-                                                            'title'         => __('General')));
-      }
-
-      if ($canedit && $closeform) {
-         echo "<div class='center'>";
-         echo Html::hidden('id', array('value' => $profiles_id));
-         echo Html::submit(_sx('button', 'Save'), array('name' => 'update'));
-         echo "</div>\n";
-         Html::closeForm();
-      }
-      echo "</div>";
-   }
 
    /**
     * @param bool $all

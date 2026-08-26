@@ -1,36 +1,31 @@
 <?php
 
 /**
- * ---------------------------------------------------------------------
- *
- * GLPI - Gestionnaire Libre de Parc Informatique
- *
- * http://glpi-project.org
- *
- * @copyright 2015-2024 Teclib' and contributors.
- * @copyright 2003-2014 by the INDEPNET Development Team.
- * @licence   https://www.gnu.org/licenses/gpl-3.0.html
- *
- * ---------------------------------------------------------------------
+ * -------------------------------------------------------------------------
+ * archires plugin for GLPI
+ * -------------------------------------------------------------------------
  *
  * LICENSE
  *
- * This file is part of GLPI.
+ * This file is part of archires.
  *
- * This program is free software: you can redistribute it and/or modify
+ * archires is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
+ * archires is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
- * ---------------------------------------------------------------------
+ * along with archires. If not, see <http://www.gnu.org/licenses/>.
+ * -------------------------------------------------------------------------
+ * @copyright Copyright (C) 2009-2026 by archires plugin team.
+ * @license   AGPLv3 https://www.gnu.org/licenses/agpl-3.0.html
+ * @link      https://github.com/InfotelGLPI/archires
+ * --------------------------------------------------------------------------
  */
 
 use Glpi\Exception\Http\AccessDeniedHttpException;
@@ -106,7 +101,11 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 $item->getFromDB($items_id);
                 $graph = Archires::buildGraph($item);
                 $params = Archires::prepareParams($item);
-                $readonly = $item->can($items_id, UPDATE);
+                // The client flag means "the graph is read-only", i.e. true when
+                // the user may NOT update the start node. Without the negation a
+                // READ-only user received readonly=false and was offered editing.
+                // Aligned with src/Archires.php and the POST branch below.
+                $readonly = !$item->can($items_id, UPDATE);
 
                 if ($view == "graph") {
                     // Output graph as json
@@ -162,6 +161,41 @@ switch ($_SERVER['REQUEST_METHOD']) {
             throw new AccessDeniedHttpException("Missing rights");
         }
 
+        // The start-node gate above only proves the caller may edit the graph's
+        // entry point. Every delta below can reference OTHER assets (relation
+        // endpoints, re-parented nodes) or global grouping rows, so each mutation
+        // must be re-authorized against the asset it actually touches. can($id,
+        // UPDATE) enforces both the UPDATE right and the entity boundary
+        // (Session::haveAccessToEntity) for entity-aware assets, closing the
+        // cross-entity gap where UPDATE on a single node granted write access to
+        // the whole shared impact graph.
+        $assert_can_update_asset = static function ($itemtype, $items_id): void {
+            if (!is_string($itemtype) || !is_a($itemtype, CommonDBTM::class, true)) {
+                throw new AccessDeniedHttpException("Missing rights");
+            }
+            $asset = getItemForItemtype($itemtype);
+            if (!($asset instanceof CommonDBTM) || !$asset->can((int) $items_id, UPDATE)) {
+                throw new AccessDeniedHttpException("Missing rights");
+            }
+        };
+
+        // A compound is a pure visual grouping with no entity of its own; authorize
+        // a mutation only when the caller can update every asset currently grouped
+        // under it, so a forged id cannot alter or destroy another scope's grouping.
+        $assert_can_update_compound = static function ($compound_id) use ($assert_can_update_asset): void {
+            /** @var \DBmysql $DB */
+            global $DB;
+
+            $members = $DB->request([
+                'SELECT' => ['itemtype', 'items_id'],
+                'FROM'   => ImpactItem::getTable(),
+                'WHERE'  => ['parent_id' => (int) $compound_id],
+            ]);
+            foreach ($members as $member) {
+                $assert_can_update_asset($member['itemtype'], $member['items_id']);
+            }
+        };
+
         $context_id = 0;
         if (
             $impact_item->fields["impactcontexts_id"] == 0
@@ -188,6 +222,11 @@ switch ($_SERVER['REQUEST_METHOD']) {
             // Extract action
             $action = $impact['action'];
             unset($impact['action']);
+
+            // A relation names a source and an impacted asset: require UPDATE on
+            // BOTH endpoints, not merely on the graph's start node.
+            $assert_can_update_asset($impact['itemtype_source'] ?? null, $impact['items_id_source'] ?? 0);
+            $assert_can_update_asset($impact['itemtype_impacted'] ?? null, $impact['items_id_impacted'] ?? 0);
 
             switch ($action) {
                 case DELTA_ACTION_ADD:
@@ -216,6 +255,14 @@ switch ($_SERVER['REQUEST_METHOD']) {
             // Extract action
             $action = $compound['action'];
             unset($compound['action']);
+
+            // ADD carries a client-side temporary id with no row yet, so there is
+            // nothing to re-authorize (its future members are gated in the items
+            // loop). UPDATE/DELETE target an existing compound: gate them on the
+            // assets it currently groups.
+            if ($action === DELTA_ACTION_UPDATE || $action === DELTA_ACTION_DELETE) {
+                $assert_can_update_compound($id);
+            }
 
             switch ($action) {
                 case DELTA_ACTION_ADD:
@@ -255,6 +302,15 @@ switch ($_SERVER['REQUEST_METHOD']) {
             switch ($action) {
                 case DELTA_ACTION_UPDATE:
                     $impactItem['id'] = $id;
+
+                    // Resolve this impact item to its underlying asset and require
+                    // UPDATE on it (entity boundary included) so a caller cannot
+                    // move or re-parent nodes bound to assets outside their scope.
+                    $current = new ImpactItem();
+                    if (!$current->getFromDB($id)) {
+                        throw new BadRequestHttpException("Unknown impact item");
+                    }
+                    $assert_can_update_asset($current->fields['itemtype'], $current->fields['items_id']);
 
                     // If this is not the starting node, check for context update
                     if ($id !== $start_node_impact_item_id) {
