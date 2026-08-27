@@ -406,6 +406,16 @@ class Archires extends CommonGLPI
     ) {
         TemplateRenderer::getInstance()->display('@archires/impact_header.html.twig');
 
+        // $graph/$params are already-serialized JSON injected verbatim as JS object
+        // literals into the <script> block below. Neutralize the only ASCII characters
+        // json_encode() leaves raw ('<', '>', '&') so a stored value such as a relation
+        // name containing "</script>" cannot break out of the element (stored XSS).
+        // Non-ASCII bytes (incl. the U+2028/U+2029 line separators) are already escaped
+        // by json_encode(); escaping these three inside JSON string values keeps the
+        // payload a valid JS object literal, so quotes must stay untouched.
+        $graph  = self::escapeJsonForInlineScript($graph);
+        $params = self::escapeJsonForInlineScript($params);
+
         // View selection — this block depends on the runtime graph/params/readonly
         // values injected into GLPIImpact, so it stays a PHP-built script block.
         echo Html::scriptBlock(
@@ -438,6 +448,31 @@ class Archires extends CommonGLPI
 //         });
       "
         );
+    }
+
+
+    /**
+     * Escape an already-serialized JSON payload for safe inlining inside an HTML
+     * <script> block as a bare JS object literal.
+     *
+     * json_encode() escapes every non-ASCII byte (so U+2028/U+2029 are covered) but
+     * leaves '<', '>' and '&' raw. Those three can appear only inside JSON string
+     * values, so rewriting them to their \uXXXX form both prevents a "</script>"
+     * (or "<!--") breakout and keeps the payload a valid JS object literal — unlike
+     * JSON_HEX_QUOT/JSON_HEX_APOS, which would mangle the structural quotes and break
+     * the literal when it is consumed as an object rather than JSON.parse()'d.
+     *
+     * @param string $json Serialized JSON string
+     *
+     * @return string
+     */
+    private static function escapeJsonForInlineScript(string $json): string
+    {
+        return strtr($json, [
+            '<' => '\\u003C',
+            '>' => '\\u003E',
+            '&' => '\\u0026',
+        ]);
     }
 
 
