@@ -140,26 +140,51 @@ switch ($_SERVER['REQUEST_METHOD']) {
             throw new BadRequestHttpException("Payload should be an array");
         }
 
-        $readonly = true;
-
         // Handle context for the starting node
         $context_em = new ImpactContext();
+        if (
+            !isset($data['context'])
+            || !is_array($data['context'])
+            || !isset($data['context']['node_id'])
+            || !is_string($data['context']['node_id'])
+        ) {
+            throw new BadRequestHttpException("Missing or invalid context");
+        }
         $context_data = $data['context'];
 
-        // Get id and type from node_id (e.g. Computer::4 -> [Computer, 4])
+        // Get id and type from node_id (e.g. Computer::4 -> [Computer, 4]). A
+        // forged node_id (missing delimiter, unknown itemtype, ...) must be
+        // rejected before any lookup: previously a malformed value produced an
+        // undefined index or a TypeError (getFromDB() on false), and an attacker
+        // itemtype flowed straight into getItemForItemtype()/getFromDB().
         $start_node_details = explode(Archires::NODE_ID_DELIMITER, $context_data['node_id']);
+        if (count($start_node_details) !== 2) {
+            throw new BadRequestHttpException("Invalid node_id");
+        }
+        [$start_node_itemtype, $start_node_items_id] = $start_node_details;
 
-        // Get impact_item for this node
-        $item = getItemForItemtype($start_node_details[0]);
-        $item->getFromDB($start_node_details[1]);
-        $impact_item = ImpactItem::findForItem($item);
-        $start_node_impact_item_id = $impact_item->fields['id'];
-        $readonly = !$item->can($item->fields['id'], UPDATE);
+        if (!is_a($start_node_itemtype, CommonDBTM::class, true)) {
+            throw new BadRequestHttpException("Invalid itemtype");
+        }
+        $item = getItemForItemtype($start_node_itemtype);
+        if (!($item instanceof CommonDBTM) || !$item->getFromDB($start_node_items_id)) {
+            throw new BadRequestHttpException("Unknown item");
+        }
 
-        // Stop here if readonly graph
-        if ($readonly) {
+        // Authorize BEFORE touching any data. ImpactItem::findForItem() defaults
+        // to create_if_missing=true, so calling it first (as the code used to)
+        // inserted an impact item row for any itemtype/items_id an unauthenticated
+        // delta referenced. can($id, UPDATE) enforces the UPDATE right and the
+        // entity boundary for the start node; the per-delta gate below re-checks
+        // every other asset the payload touches.
+        if (!$item->can($item->fields['id'], UPDATE)) {
             throw new AccessDeniedHttpException("Missing rights");
         }
+
+        // Get impact_item for this node (safe to create now that the caller is
+        // authorized to update it).
+        $impact_item = ImpactItem::findForItem($item);
+        $start_node_impact_item_id = $impact_item->fields['id'];
 
         // The start-node gate above only proves the caller may edit the graph's
         // entry point. Every delta below can reference OTHER assets (relation

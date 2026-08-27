@@ -697,6 +697,17 @@ class Archires extends CommonGLPI
             return false;
         }
 
+        // Never expose a node the current user may not READ. Neighbours are
+        // reached by exploring impact relations from an authorized start node,
+        // so without this gate a node's friendly name, tooltip (type, status,
+        // criticality, comment), linked ITIL objects and GOTO link would leak
+        // across the entity boundary. can($id, READ) enforces the READ right and
+        // the entity access check for entity-aware assets. The start node itself
+        // is always readable (the GET branch already gated it), so it passes.
+        if (!$item->can($item->getID(), READ)) {
+            return false;
+        }
+
         // Define basic data of the new node
         $id_field = [];
         if (in_array($item::class, SearchEngine::getMetaItemtypeAvailable(Ticket::class), true)) {
@@ -912,6 +923,15 @@ class Archires extends CommonGLPI
                 continue;
             }
             $related_node->getFromDB($related_item['items_id_' . $source]);
+
+            // Symmetric with addNode(): a neighbour the user cannot READ is not
+            // added, not linked by an edge, and not explored further, so the
+            // graph never discloses topology behind an asset outside the user's
+            // scope. addNode() also guards the insert as a backstop.
+            if (!$related_node->can($related_node->getID(), READ)) {
+                continue;
+            }
+
             $label = $related_item['name'];
             self::addNode($nodes, $related_node);
 
