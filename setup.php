@@ -41,7 +41,7 @@ if (!defined("PLUGIN_ARCHIRES_WEBDIR")) {
     $root = $CFG_GLPI['root_doc'] . '/plugins/archires';
     define("PLUGIN_ARCHIRES_WEBDIR", $root);
 }
-// Init the hooks of the plugins -Needed
+// Init the hooks of the plugins - Needed
 function plugin_init_archires()
 {
     global $PLUGIN_HOOKS;
