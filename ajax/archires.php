@@ -216,6 +216,13 @@ switch ($_SERVER['REQUEST_METHOD']) {
                 'FROM'   => ImpactItem::getTable(),
                 'WHERE'  => ['parent_id' => (int) $compound_id],
             ]);
+            // A memberless compound has no identifiable owner, so no asset can vouch
+            // for the caller's rights: treat the empty set as an explicit denial
+            // rather than a silently passing guard. Otherwise a forged id pointing at
+            // an orphan compound would let another scope rename/delete it unchecked.
+            if (count($members) === 0) {
+                throw new AccessDeniedHttpException("Missing rights");
+            }
             foreach ($members as $member) {
                 $assert_can_update_asset($member['itemtype'], $member['items_id']);
             }
