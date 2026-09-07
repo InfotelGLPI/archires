@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GLPI - Archires plugin 1.0.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-08-23 10:24+0200\n"
+"POT-Creation-Date: 2026-08-29 13:22+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,11 +17,11 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: setup.php:83 inc/archires.class.php:58 inc/archires.class.php:115
-#: inc/archires.class.php:478 inc/config.class.php:47 inc/profile.class.php:51
+#: setup.php:68 src/Archires.php:75 src/Archires.php:137 src/Config.php:53
+#: src/Profile.php:66
 msgid "Network architecture"
 msgstr ""
 
-#: front/config.form.php:52
+#: front/config.form.php:54
 msgid "Please activate the plugin"
 msgstr ""

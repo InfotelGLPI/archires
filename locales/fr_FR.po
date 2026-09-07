@@ -6,8 +6,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GLPI Plugin - Ldapfields\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-08-23 10:24+0200\n"
-"PO-Revision-Date: 2024-08-23 10:25+0200\n"
+"POT-Creation-Date: 2026-08-29 13:22+0200\n"
+"PO-Revision-Date: 2026-08-29 13:23+0200\n"
 "Last-Translator: \n"
 "Language-Team: \n"
 "Language: fr_FR\n"
@@ -17,11 +17,11 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "X-Generator: Poedit 3.0\n"
 
-#: setup.php:83 inc/archires.class.php:58 inc/archires.class.php:115
-#: inc/archires.class.php:478 inc/config.class.php:47 inc/profile.class.php:51
+#: setup.php:68 src/Archires.php:75 src/Archires.php:137 src/Config.php:53
+#: src/Profile.php:66
 msgid "Network architecture"
 msgstr "Architecture réseau"
 
-#: front/config.form.php:52
+#: front/config.form.php:54
 msgid "Please activate the plugin"
 msgstr "Merci d'activer le plugin"
