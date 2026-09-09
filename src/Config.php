@@ -33,14 +33,9 @@ namespace GlpiPlugin\Archires;
 use CommonDBTM;
 use Glpi\Application\View\TemplateRenderer;
 
-if (!defined('GLPI_ROOT')) {
-    die("Sorry. You can't access directly to this file");
-}
-
 class Config extends CommonDBTM
 {
-
-   static $rightname = 'plugin_archires';
+    public static $rightname = 'plugin_archires';
 
     /**
      * Get name of this type by language of the user connected
@@ -48,19 +43,19 @@ class Config extends CommonDBTM
      * @param integer $nb number of elements
      * @return string name of this type
      */
-    static function getTypeName($nb = 0)
+    public static function getTypeName($nb = 0)
     {
         return __('Network architecture', 'archires');
     }
 
-    function defineTabs($options = [])
+    public function defineTabs($options = [])
     {
         $ong = [];
         $this->addDefaultFormTab($ong);
         return $ong;
     }
 
-    function showForm($ID, $options = [])
+    public function showForm($ID, $options = [])
     {
         if (!$this->canView()) {
             return false;

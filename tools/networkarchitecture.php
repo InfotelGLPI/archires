@@ -70,7 +70,7 @@ foreach ($ports as $port) {
                 'itemtype_source' => $port['itemtype'],
                 'items_id_source' => $port['items_id'],
                 'itemtype_impacted' => $itemtype_impacted,
-                'items_id_impacted' => $items_id_impacted
+                'items_id_impacted' => $items_id_impacted,
             ]);
         }
     }
@@ -87,7 +87,7 @@ foreach ($ports as $port) {
                 'itemtype_source' => $itemtype_source,
                 'items_id_source' => $items_id_source,
                 'itemtype_impacted' => $port['itemtype'],
-                'items_id_impacted' => $port['items_id']
+                'items_id_impacted' => $port['items_id'],
             ]);
         }
     }

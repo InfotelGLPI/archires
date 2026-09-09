@@ -51,7 +51,7 @@ function plugin_archires_install()
         Archires::class,
         'CreateNetworkArchitecture',
         WEEK_TIMESTAMP,
-        ['state' => CronTask::STATE_DISABLE]
+        ['state' => CronTask::STATE_DISABLE],
     );
 
     Profile::initProfile();

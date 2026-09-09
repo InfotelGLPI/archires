@@ -91,7 +91,7 @@ class Archires extends CommonGLPI
         // Only enabled for CommonDBTM
         if (!is_a($item, "CommonDBTM", true)) {
             throw new \InvalidArgumentException(
-                "Argument \$item ($class) must be a CommonDBTM."
+                "Argument \$item ($class) must be a CommonDBTM.",
             );
         }
 
@@ -101,7 +101,7 @@ class Archires extends CommonGLPI
         // Check if itemtype is valid
         if (!$is_enabled_asset && !$is_itil_object) {
             throw new \InvalidArgumentException(
-                "Argument \$item ($class) is not a valid target for network architecture."
+                "Argument \$item ($class) is not a valid target for network architecture.",
             );
         }
 
@@ -149,7 +149,7 @@ class Archires extends CommonGLPI
         // Only enabled for CommonDBTM
         if (!is_a($item, "CommonDBTM")) {
             throw new \InvalidArgumentException(
-                "Argument \$item ($class) must be a CommonDBTM)."
+                "Argument \$item ($class) must be a CommonDBTM).",
             );
         }
 
@@ -227,7 +227,7 @@ class Archires extends CommonGLPI
                showGraphView();
             }
          });
-      "
+      ",
         );
 
 
@@ -287,7 +287,7 @@ class Archires extends CommonGLPI
                '$start_node'
             )
          });
-      "
+      ",
         );
     }
 
@@ -446,7 +446,7 @@ class Archires extends CommonGLPI
 //         $('#sviewlist').click(function() {
 //            showListView();
 //         });
-      "
+      ",
         );
     }
 
@@ -499,20 +499,20 @@ class Archires extends CommonGLPI
 
             if ($impact_context) {
                 $params = $params + array_intersect_key(
-                        $impact_context->fields,
-                        [
-                            'positions' => 1,
-                            'zoom' => 1,
-                            'pan_x' => 1,
-                            'pan_y' => 1,
-                            'impact_color' => 1,
-                            'depends_color' => 1,
-                            'impact_and_depends_color' => 1,
-                            'show_depends' => 1,
-                            'show_impact' => 1,
-                            'max_depth' => 1,
-                        ]
-                    );
+                    $impact_context->fields,
+                    [
+                        'positions' => 1,
+                        'zoom' => 1,
+                        'pan_x' => 1,
+                        'pan_y' => 1,
+                        'impact_color' => 1,
+                        'depends_color' => 1,
+                        'impact_and_depends_color' => 1,
+                        'show_depends' => 1,
+                        'show_impact' => 1,
+                        'max_depth' => 1,
+                    ],
+                );
             }
         }
 
@@ -541,7 +541,7 @@ class Archires extends CommonGLPI
             $item,
             self::DIRECTION_FORWARD,
             [self::getNodeID($item) => true],
-            $recursive
+            $recursive,
         );
 
         // Explore the graph backward
@@ -551,7 +551,7 @@ class Archires extends CommonGLPI
             $item,
             self::DIRECTION_BACKWARD,
             [self::getNodeID($item) => true],
-            $recursive
+            $recursive,
         );
 
         // Add current node to the graph if no impact relations were found
@@ -609,7 +609,7 @@ class Archires extends CommonGLPI
             self::DIRECTION_FORWARD => self::getNodeID($itemA) . self::EDGE_ID_DELIMITER . self::getNodeID($itemB),
             self::DIRECTION_BACKWARD => self::getNodeID($itemB) . self::EDGE_ID_DELIMITER . self::getNodeID($itemA),
             default => throw new \InvalidArgumentException(
-                "Invalid value for argument \$direction ($direction)."
+                "Invalid value for argument \$direction ($direction).",
             ),
         };
     }
@@ -662,9 +662,9 @@ class Archires extends CommonGLPI
         if ($infocom->getFromDBforDevice($item::class, $item->getID())) {
             $businesscriticities_id
                 = Dropdown::getDropdownName(
-                'glpi_businesscriticities',
-                $infocom->fields['businesscriticities_id']
-            );
+                    'glpi_businesscriticities',
+                    $infocom->fields['businesscriticities_id'],
+                );
         }
         $tooltip = [
             __("Name") => $item->getFriendlyName(),
@@ -717,7 +717,7 @@ class Archires extends CommonGLPI
                 static fn($option, $id) => is_numeric($id)
                     && $option['field'] === $item::getIndexName()
                     && $option['table'] === $item::getTable(),
-                ARRAY_FILTER_USE_BOTH
+                ARRAY_FILTER_USE_BOTH,
             );
         }
         $new_node = [
@@ -841,7 +841,7 @@ class Archires extends CommonGLPI
                 break;
             default:
                 throw new \InvalidArgumentException(
-                    "Invalid value for argument \$direction ($direction)."
+                    "Invalid value for argument \$direction ($direction).",
                 );
         }
 
@@ -894,7 +894,7 @@ class Archires extends CommonGLPI
                 break;
             default:
                 throw new \InvalidArgumentException(
-                    "Invalid value for argument \$direction ($direction)."
+                    "Invalid value for argument \$direction ($direction).",
                 );
         }
 
@@ -948,7 +948,7 @@ class Archires extends CommonGLPI
                     $edges,
                     $related_node,
                     $direction,
-                    $explored_nodes
+                    $explored_nodes,
                 );
             }
         }

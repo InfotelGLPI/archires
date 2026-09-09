@@ -41,19 +41,19 @@ if (!defined("PLUGIN_ARCHIRES_WEBDIR")) {
     $root = $CFG_GLPI['root_doc'] . '/plugins/archires';
     define("PLUGIN_ARCHIRES_WEBDIR", $root);
 }
-// Init the hooks of the plugins - Needed 
+// Init the hooks of the plugins - Needed
 function plugin_init_archires()
 {
     global $PLUGIN_HOOKS;
 
-    $PLUGIN_HOOKS[Hooks::CHANGE_PROFILE]['archires'] = array(Profile::class, 'initProfile');
+    $PLUGIN_HOOKS[Hooks::CHANGE_PROFILE]['archires'] = [Profile::class, 'initProfile'];
 
     if (Session::getLoginUserID()) {
         Plugin::registerClass(Archires::class, ['addtabon' => ['Computer','NetworkEquipment']]);
 
         Plugin::registerClass(
             Profile::class,
-            array('addtabon' => 'Profile')
+            ['addtabon' => 'Profile'],
         );
     }
 }
@@ -64,7 +64,7 @@ function plugin_init_archires()
  */
 function plugin_version_archires()
 {
-    return array(
+    return [
         'name' => __('Network architecture', 'archires'),
         'version' => PLUGIN_ARCHIRES_VERSION,
         'license' => 'GPLv3+',
@@ -74,8 +74,8 @@ function plugin_version_archires()
             'glpi' => [
                 'min' => '11.0',
                 'max' => '12.0',
-                'dev' => false
-            ]
-        ]
-    );
+                'dev' => false,
+            ],
+        ],
+    ];
 }

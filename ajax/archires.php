@@ -127,7 +127,7 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
         break;
 
-    // Post request: update the store impact dependencies, compounds or items
+        // Post request: update the store impact dependencies, compounds or items
     case 'POST':
         // Check required params
         if (!isset($_POST['impacts'])) {
