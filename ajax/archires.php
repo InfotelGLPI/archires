@@ -45,6 +45,13 @@ global $CFG_GLPI;
 header("Content-Type: application/json; charset=UTF-8");
 Html::header_nocache();
 
+// Same restrictions as the tab (Archires::displayTabContentForItem()): central
+// interface only, plugin right required (UPDATE to save the graph)
+if (Session::getCurrentInterface() !== 'central') {
+    throw new AccessDeniedHttpException();
+}
+Session::checkRight(Archires::$rightname, $_SERVER['REQUEST_METHOD'] === 'GET' ? READ : UPDATE);
+
 switch ($_SERVER['REQUEST_METHOD']) {
     // GET request: build the impact graph for a given asset
     case 'GET':
@@ -55,21 +62,31 @@ switch ($_SERVER['REQUEST_METHOD']) {
         if (empty($itemtype)) {
             throw new BadRequestHttpException("Missing itemtype");
         }
+        // Same validation as the POST branch
+        if (!is_string($itemtype) || !is_a($itemtype, CommonDBTM::class, true)) {
+            throw new BadRequestHttpException("Invalid itemtype");
+        }
 
         $item = getItemForItemtype($itemtype);
+        if (!($item instanceof CommonDBTM)) {
+            throw new BadRequestHttpException("Invalid itemtype");
+        }
         if (!$item->canView()) {
             throw new AccessDeniedHttpException();
         }
 
         switch ($action) {
             case "search":
-                $used     = $_GET["used"]     ?? "[]";
-                $filter   = $_GET["filter"]   ?? "";
-                $page     = $_GET["page"]     ?? 0;
-
+                $used   = json_decode((string) ($_GET["used"] ?? "[]"), true);
+                $filter = (string) ($_GET["filter"] ?? "");
+                $page   = max(0, (int) ($_GET["page"] ?? 0));
+                if (!is_array($used)) {
+                    throw new BadRequestHttpException("Invalid 'used' parameter");
+                }
+                $used = array_map('intval', $used);
 
                 // Execute search
-                $assets = Impact::searchAsset($itemtype, json_decode($used), $filter, $page);
+                $assets = Impact::searchAsset($itemtype, $used, $filter, $page);
                 foreach ($assets['items'] as $index => $item) {
                     $item['image'] = Impact::getImpactIcon($itemtype, $item['id']);
 
@@ -229,6 +246,8 @@ switch ($_SERVER['REQUEST_METHOD']) {
         };
 
         $context_id = 0;
+        // Context fields computed server side for the start node (never taken from the payload)
+        $start_node_context = [];
         if (
             $impact_item->fields["impactcontexts_id"] == 0
             || $impact_item->fields["is_slave"] == 1
@@ -238,8 +257,11 @@ switch ($_SERVER['REQUEST_METHOD']) {
             $context_id = $context_em->add($context_data);
 
             // Set the context_id to be updated
-            $data['items'][$start_node_impact_item_id]['impactcontexts_id'] = $context_id;
-            $data['items'][$start_node_impact_item_id]['is_slave'] = 0;
+            $start_node_context = [
+                'impactcontexts_id' => $context_id,
+                'is_slave'          => 0,
+            ];
+            $data['items'][$start_node_impact_item_id]['action'] ??= DELTA_ACTION_UPDATE;
         } else {
             // Update existing context
             $context_id = $impact_item->fields["impactcontexts_id"];
@@ -283,6 +305,9 @@ switch ($_SERVER['REQUEST_METHOD']) {
 
         // Save impact compound delta
         $em = new ImpactCompound();
+        // Compounds created by this request: they have no member yet, so they cannot
+        // be authorized through $assert_can_update_compound when nodes join them
+        $created_compounds = [];
         foreach ($data['compounds'] as $id => $compound) {
             // Extract action
             $action = $compound['action'];
@@ -299,6 +324,9 @@ switch ($_SERVER['REQUEST_METHOD']) {
             switch ($action) {
                 case DELTA_ACTION_ADD:
                     $newCompoundID = $em->add($compound);
+                    if ($newCompoundID) {
+                        $created_compounds[] = (int) $newCompoundID;
+                    }
 
                     // Update id reference in impactitem
                     // This is needed because some nodes might have this compound
@@ -333,8 +361,6 @@ switch ($_SERVER['REQUEST_METHOD']) {
 
             switch ($action) {
                 case DELTA_ACTION_UPDATE:
-                    $impactItem['id'] = $id;
-
                     // Resolve this impact item to its underlying asset and require
                     // UPDATE on it (entity boundary included) so a caller cannot
                     // move or re-parent nodes bound to assets outside their scope.
@@ -344,18 +370,38 @@ switch ($_SERVER['REQUEST_METHOD']) {
                     }
                     $assert_can_update_asset($current->fields['itemtype'], $current->fields['items_id']);
 
-                    // If this is not the starting node, check for context update
-                    if ($id !== $start_node_impact_item_id) {
+                    // Only the parent compound comes from the payload (see
+                    // GLPIImpact.computeItemsDelta()); the context fields are
+                    // computed server side and never taken from the client.
+                    $input = ['id' => (int) $id];
+                    if (array_key_exists('parent_id', $impactItem)) {
+                        $parent_id = (int) $impactItem['parent_id'];
+                        // Joining an existing compound requires the same rights as
+                        // updating it, otherwise a forged id would disclose (and
+                        // pollute) a grouping from another scope
+                        if (
+                            $parent_id > 0
+                            && $parent_id !== (int) $current->fields['parent_id']
+                            && !in_array($parent_id, $created_compounds, true)
+                        ) {
+                            $assert_can_update_compound($parent_id);
+                        }
+                        $input['parent_id'] = $parent_id;
+                    }
+
+                    if ((int) $id === (int) $start_node_impact_item_id) {
+                        $input = array_merge($input, $start_node_context);
+                    } else {
                         $em->getFromDB($id);
 
                         // If this node has no context -> make it a slave
                         if ($em->fields['impactcontexts_id'] == 0) {
-                            $impactItem['impactcontexts_id'] = $context_id;
-                            $impactItem['is_slave'] = 1;
+                            $input['impactcontexts_id'] = $context_id;
+                            $input['is_slave'] = 1;
                         }
                     }
 
-                    $em->update($impactItem);
+                    $em->update($input);
                     break;
             }
         }

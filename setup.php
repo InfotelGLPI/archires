@@ -44,9 +44,19 @@ if (!defined("PLUGIN_ARCHIRES_WEBDIR")) {
 // Init the hooks of the plugins - Needed
 function plugin_init_archires()
 {
-    global $PLUGIN_HOOKS;
+    global $PLUGIN_HOOKS, $CFG_GLPI;
 
     $PLUGIN_HOOKS[Hooks::CHANGE_PROFILE]['archires'] = [Profile::class, 'initProfile'];
+
+    // Clean the plugin impact tables when an asset is purged (the core only
+    // cleans its own tables, see Impact::clean())
+    $purged_itemtypes = array_unique(array_merge(
+        [Computer::class, NetworkEquipment::class],
+        array_keys($CFG_GLPI['impact_asset_types'] ?? []),
+    ));
+    foreach ($purged_itemtypes as $itemtype) {
+        $PLUGIN_HOOKS[Hooks::ITEM_PURGE]['archires'][$itemtype] = [Archires::class, 'cleanImpactData'];
+    }
 
     if (Session::getLoginUserID()) {
         Plugin::registerClass(Archires::class, ['addtabon' => ['Computer','NetworkEquipment']]);

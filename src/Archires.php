@@ -85,6 +85,10 @@ class Archires extends CommonGLPI
         /** @var \DBmysql $DB */
         global $DB;
 
+        if (!Session::haveRight(self::$rightname, READ)) {
+            return '';
+        }
+
         // Class of the current item
         $class = get_class($item);
 
@@ -140,7 +144,10 @@ class Archires extends CommonGLPI
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
         // Impact analysis should not be available outside of central
-        if (Session::getCurrentInterface() !== "central") {
+        if (
+            Session::getCurrentInterface() !== "central"
+            || !Session::haveRight(self::$rightname, READ)
+        ) {
             return false;
         }
 
@@ -575,6 +582,53 @@ class Archires extends CommonGLPI
      * @param string $itemtype
      * @return bool
      */
+    /**
+     * Remove the impact data of a purged asset (Hooks::ITEM_PURGE), mirroring
+     * Impact::clean() on the plugin tables
+     *
+     * @param CommonDBTM $item
+     *
+     * @return void
+     */
+    public static function cleanImpactData(CommonDBTM $item): void
+    {
+        /** @var \DBmysql $DB */
+        global $DB;
+
+        $DB->delete(ImpactRelation::getTable(), [
+            'OR' => [
+                [
+                    'itemtype_source' => $item::class,
+                    'items_id_source' => $item->getID(),
+                ],
+                [
+                    'itemtype_impacted' => $item::class,
+                    'items_id_impacted' => $item->getID(),
+                ],
+            ],
+        ]);
+
+        $impact_item = ImpactItem::findForItem($item, false);
+        if (!$impact_item) {
+            return;
+        }
+
+        $impact_item->delete(['id' => $impact_item->getID()], true);
+
+        // A master context is removed and its slaves are detached from it
+        $contexts_id = (int) $impact_item->fields['impactcontexts_id'];
+        if ($contexts_id > 0 && (int) $impact_item->fields['is_slave'] === 0) {
+            $DB->update(ImpactItem::getTable(), [
+                'impactcontexts_id' => 0,
+                'is_slave'          => 0,
+            ], [
+                'impactcontexts_id' => $contexts_id,
+            ]);
+
+            $DB->delete(ImpactContext::getTable(), ['id' => $contexts_id]);
+        }
+    }
+
     public static function isEnabled(string $itemtype): bool
     {
         return true;//in_array($itemtype, self::getEnabledItemtypes());
@@ -704,7 +758,7 @@ class Archires extends CommonGLPI
         // across the entity boundary. can($id, READ) enforces the READ right and
         // the entity access check for entity-aware assets. The start node itself
         // is always readable (the GET branch already gated it), so it passes.
-        if (!$item->can($item->getID(), READ)) {
+        if ($item->isNewItem() || !$item->can($item->getID(), READ)) {
             return false;
         }
 
@@ -922,7 +976,11 @@ class Archires extends CommonGLPI
             if (!($related_node = getItemForItemtype($related_item['itemtype_' . $source]))) {
                 continue;
             }
-            $related_node->getFromDB($related_item['items_id_' . $source]);
+            // Skip relations pointing to a purged asset: can(-1, READ) would
+            // otherwise fall back to the creation check and add a ghost node.
+            if (!$related_node->getFromDB($related_item['items_id_' . $source])) {
+                continue;
+            }
 
             // Symmetric with addNode(): a neighbour the user cannot READ is not
             // added, not linked by an edge, and not explored further, so the
