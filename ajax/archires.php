@@ -62,8 +62,13 @@ switch ($_SERVER['REQUEST_METHOD']) {
         if (empty($itemtype)) {
             throw new BadRequestHttpException("Missing itemtype");
         }
-        // Same validation as the POST branch
-        if (!is_string($itemtype) || !is_a($itemtype, CommonDBTM::class, true)) {
+        // Same validation as the POST branch, restricted to the itemtypes enabled for
+        // the impact analysis (search and load must not reach any other CommonDBTM)
+        if (
+            !is_string($itemtype)
+            || !is_a($itemtype, CommonDBTM::class, true)
+            || !Archires::isEnabled($itemtype)
+        ) {
             throw new BadRequestHttpException("Invalid itemtype");
         }
 
@@ -169,6 +174,14 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
         $context_data = $data['context'];
 
+        // Every delta section is iterated below: reject a malformed payload with a 400
+        // instead of emitting warnings on a missing key
+        foreach (['edges', 'compounds', 'items'] as $section) {
+            if (!isset($data[$section]) || !is_array($data[$section])) {
+                throw new BadRequestHttpException("Missing or invalid '$section' delta");
+            }
+        }
+
         // Get id and type from node_id (e.g. Computer::4 -> [Computer, 4]). A
         // forged node_id (missing delimiter, unknown itemtype, ...) must be
         // rejected before any lookup: previously a malformed value produced an
@@ -180,7 +193,10 @@ switch ($_SERVER['REQUEST_METHOD']) {
         }
         [$start_node_itemtype, $start_node_items_id] = $start_node_details;
 
-        if (!is_a($start_node_itemtype, CommonDBTM::class, true)) {
+        if (
+            !is_a($start_node_itemtype, CommonDBTM::class, true)
+            || !Archires::isEnabled($start_node_itemtype)
+        ) {
             throw new BadRequestHttpException("Invalid itemtype");
         }
         $item = getItemForItemtype($start_node_itemtype);
@@ -273,8 +289,9 @@ switch ($_SERVER['REQUEST_METHOD']) {
         // Save impact relation delta
         $em = new ImpactRelation();
         foreach ($data['edges'] as $impact) {
-            // Extract action
-            $action = $impact['action'];
+            // Extract action. It comes from JSON and switch() compares loosely, so
+            // normalize it once: every check below must see the value switch() sees.
+            $action = (int) ($impact['action'] ?? 0);
             unset($impact['action']);
 
             // A relation names a source and an impacted asset: require UPDATE on
@@ -284,6 +301,14 @@ switch ($_SERVER['REQUEST_METHOD']) {
 
             switch ($action) {
                 case DELTA_ACTION_ADD:
+                    // A new relation may only link itemtypes enabled for the impact
+                    // analysis, the graph would never display any other one
+                    if (
+                        !Archires::isEnabled((string) ($impact['itemtype_source'] ?? ''))
+                        || !Archires::isEnabled((string) ($impact['itemtype_impacted'] ?? ''))
+                    ) {
+                        throw new BadRequestHttpException("Invalid itemtype");
+                    }
                     $em->add($impact);
                     break;
 
@@ -309,18 +334,16 @@ switch ($_SERVER['REQUEST_METHOD']) {
         // be authorized through $assert_can_update_compound when nodes join them
         $created_compounds = [];
         foreach ($data['compounds'] as $id => $compound) {
-            // Extract action
-            $action = $compound['action'];
+            // Extract action. A string "2"/"3" used to fail the strict gate while still
+            // entering the loose switch() below, skipping the compound authorization.
+            $action = (int) ($compound['action'] ?? 0);
             unset($compound['action']);
 
             // ADD carries a client-side temporary id with no row yet, so there is
             // nothing to re-authorize (its future members are gated in the items
-            // loop). UPDATE/DELETE target an existing compound: gate them on the
-            // assets it currently groups.
-            if ($action === DELTA_ACTION_UPDATE || $action === DELTA_ACTION_DELETE) {
-                $assert_can_update_compound($id);
-            }
-
+            // loop). UPDATE/DELETE target an existing compound: they are gated on the
+            // assets it currently groups inside their own case, so the gate and the
+            // write cannot disagree on the action.
             switch ($action) {
                 case DELTA_ACTION_ADD:
                     $newCompoundID = $em->add($compound);
@@ -339,11 +362,13 @@ switch ($_SERVER['REQUEST_METHOD']) {
                     break;
 
                 case DELTA_ACTION_UPDATE:
+                    $assert_can_update_compound($id);
                     $compound['id'] = $id;
                     $em->update($compound);
                     break;
 
                 case DELTA_ACTION_DELETE:
+                    $assert_can_update_compound($id);
                     $em->delete(['id' => $id]);
                     break;
 
@@ -355,8 +380,8 @@ switch ($_SERVER['REQUEST_METHOD']) {
         // Save impact item delta
         $em = new ImpactItem();
         foreach ($data['items'] as $id => $impactItem) {
-            // Extract action
-            $action = $impactItem['action'];
+            // Extract action (normalized like the edges and compounds loops)
+            $action = (int) ($impactItem['action'] ?? 0);
             unset($impactItem['action']);
 
             switch ($action) {

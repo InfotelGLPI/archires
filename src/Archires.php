@@ -102,11 +102,11 @@ class Archires extends CommonGLPI
         $is_enabled_asset = self::isEnabled($class);
         $is_itil_object = is_a($item, "CommonITILObject", true);
 
-        // Check if itemtype is valid
+        // The tab is registered on Computer and NetworkEquipment, but the impact analysis
+        // may be disabled for them in the core configuration: hide the tab in that case
+        // rather than breaking the whole item form
         if (!$is_enabled_asset && !$is_itil_object) {
-            throw new \InvalidArgumentException(
-                "Argument \$item ($class) is not a valid target for network architecture.",
-            );
+            return '';
         }
 
         if (
@@ -577,12 +577,6 @@ class Archires extends CommonGLPI
 
 
     /**
-     * Check if the given itemtype is enabled in impact config
-     *
-     * @param string $itemtype
-     * @return bool
-     */
-    /**
      * Remove the impact data of a purged asset (Hooks::ITEM_PURGE), mirroring
      * Impact::clean() on the plugin tables
      *
@@ -629,9 +623,18 @@ class Archires extends CommonGLPI
         }
     }
 
+    /**
+     * Check if the given itemtype is enabled in impact config
+     *
+     * @param string $itemtype
+     * @return bool
+     */
     public static function isEnabled(string $itemtype): bool
     {
-        return true;//in_array($itemtype, self::getEnabledItemtypes());
+        // Same allow-list as the core impact analysis (Setup > General > Impact analysis):
+        // the graph, the asset picker and the relation exploration must not reach itemtypes
+        // the administrator did not enable
+        return Impact::isEnabled($itemtype);
     }
 
     /**
