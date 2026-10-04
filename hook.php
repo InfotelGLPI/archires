@@ -65,6 +65,7 @@ function plugin_archires_install()
  */
 function plugin_archires_uninstall()
 {
+    global $DB;
 
     ImpactCompound::uninstall();
     ImpactContext::uninstall();
@@ -72,7 +73,9 @@ function plugin_archires_uninstall()
     ImpactRelation::uninstall();
 
 
-    CronTask::unregister("archires");
+    // CronTask::unregister() matches itemtypes with a LIKE that never matches the
+    // backslashes of a namespaced class: the task was left behind
+    $DB->delete('glpi_crontasks', ['itemtype' => Archires::class]);
 
     //Delete rights associated with the plugin
     $profileRight = new ProfileRight();

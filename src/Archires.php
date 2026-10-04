@@ -326,7 +326,16 @@ class Archires extends CommonGLPI
 
     public static function prepareParams(CommonDBTM $item)
     {
-        $impact_item = ImpactItem::findForItem($item);
+        // Read only: the graph of an item is displayed (tab, ajax/archires.php GET) without
+        // creating its impact item; the POST of a change creates it, under the UPDATE right
+        $impact_item = ImpactItem::findForItem($item, false);
+        if (!$impact_item) {
+            return json_encode([
+                'parent_id'         => 0,
+                'impactcontexts_id' => 0,
+                'is_slave'          => 0,
+            ]);
+        }
 
         $params = array_intersect_key($impact_item->fields, [
             'parent_id' => 1,
