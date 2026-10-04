@@ -214,125 +214,53 @@ class Archires extends CommonGLPI
         $params = self::prepareParams($item);
         $readonly = !$item->can($item->fields['id'], UPDATE);
 
-        // Print header
-        self::printHeader(Impact::makeDataForCytoscape($graph), $params, $readonly);
+        // Header (title and graph view link)
+        TemplateRenderer::getInstance()->display('@archires/impact_header.html.twig');
 
-        // Displays views
-        self::displayGraphView($item);
-
-        //        $graphForList = Impact::buildGraph($item);
-        //        Impact::displayListView($item, $graphForList, true);
-
-        // Select view
-        echo Html::scriptBlock(
-            "
-         // Select default view
-         $(document).ready(function() {
-            if (location.hash == '#list') {
-               showListView();
-            } else {
-               showGraphView();
-            }
-         });
-      ",
-        );
-
+        // Graph view: the network container and the dialogs of the core, then the data the
+        // graph is built from, read back by public/scripts/archires.js. The graph and the
+        // params are JSON strings: output in data-* attributes (escaped by Twig) and parsed
+        // by the script, they need no inline-script escaping.
+        TemplateRenderer::getInstance()->display('@archires/impact_graph_view.html.twig', [
+            'graph_html' => self::renderImpactNetwork(),
+            'colors'     => [
+                'default'  => self::DEFAULT_COLOR,
+                'forward'  => self::IMPACT_COLOR,
+                'backward' => self::DEPENDS_COLOR,
+                'both'     => self::IMPACT_AND_DEPENDS_COLOR,
+            ],
+            'start_node' => self::getNodeID($item),
+            'graph'      => Impact::makeDataForCytoscape($graph),
+            'params'     => $params,
+            'readonly'   => $readonly,
+        ]);
 
         return true;
     }
 
     /**
-     * Display the impact analysis as an interactive graph
-     *
-     * @param CommonDBTM $item starting point of the graph
+     * Assets, container and dialogs of the impact network, as a string (the graph itself is
+     * started by public/scripts/archires.js)
      */
-    public static function displayGraphView(
-        CommonDBTM $item
-    ) {
-        Impact::loadLibs();
-
-        echo '<div id="impact_graph_view">';
-        self::prepareImpactNetwork($item);
-        echo '</div>';
-    }
-
-    /**
-     * Prepare the impact network
-     *
-     * @param CommonDBTM $item The specified item
-     * @since 9.5
-     *
-     */
-    public static function prepareImpactNetwork(CommonDBTM $item)
+    private static function renderImpactNetwork(): string
     {
-        // Load requirements
-        self::printImpactNetworkContainer();
-        self::printShowOngoingDialog();
-        self::printEditCompoundDialog();
-        self::printEditEdgeDialog();
-        echo Html::script("js/impact.js");
+        $renderer = TemplateRenderer::getInstance();
 
-        // Load backend values
-        $default = self::DEFAULT_COLOR;
-        $forward = self::IMPACT_COLOR;
-        $backward = self::DEPENDS_COLOR;
-        $both = self::IMPACT_AND_DEPENDS_COLOR;
-        $start_node = self::getNodeID($item);
-
-        // Bind the backend values to the client and start the network
-        echo Html::scriptBlock(
-            "
-         $(function() {
-            GLPIImpact.prepareNetwork(
-               $(\"#network_container\"),
-               {
-                  default : '$default',
-                  forward : '$forward',
-                  backward: '$backward',
-                  both    : '$both',
-               },
-               '$start_node'
-            )
-         });
-      ",
-        );
+        return Html::css('lib/cytoscape.css')
+            . Html::script('lib/cytoscape.js')
+            . self::renderImpactNetworkContainer()
+            // Dialogs built by the front end of the core
+            . $renderer->render('impact/ongoing_modal.html.twig')
+            . $renderer->render('impact/edit_compound_modal.html.twig')
+            . $renderer->render('impact/edit_edge_modal.html.twig')
+            . Html::script('js/impact.js')
+            . Html::script(PLUGIN_ARCHIRES_WEBDIR . '/scripts/archires.js', [], false);
     }
 
     /**
-     * Load the "show ongoing tickets" dialog
-     *
-     * @since 9.5
+     * Side panel and container of the impact network
      */
-    public static function printShowOngoingDialog()
-    {
-        // This dialog will be built dynamically by the front end
-        TemplateRenderer::getInstance()->display('impact/ongoing_modal.html.twig');
-    }
-
-    /**
-     * Load the "edit compound" dialog
-     *
-     * @since 9.5
-     */
-    public static function printEditCompoundDialog()
-    {
-        TemplateRenderer::getInstance()->display('impact/edit_compound_modal.html.twig');
-    }
-
-    /**
-     * Load the "edit edge" dialog
-     */
-    private static function printEditEdgeDialog(): void
-    {
-        TemplateRenderer::getInstance()->display('impact/edit_edge_modal.html.twig');
-    }
-
-    /**
-     * Load the impact network container
-     *
-     * @since 9.5
-     */
-    public static function printImpactNetworkContainer()
+    private static function renderImpactNetworkContainer(): string
     {
         /** @var array $CFG_GLPI */
         global $CFG_GLPI;
@@ -363,17 +291,14 @@ class Archires extends CommonGLPI
             ];
         }
 
-        // Capture the GLPI form helpers as raw HTML slots: Html::input/getCheckbox
-        // return markup, Html::showColorField echoes it (hence the ob_start capture).
-        // The template prints these through |raw and escapes everything else.
+        // GLPI form helpers, as raw HTML slots: the template prints these through |raw and
+        // escapes everything else
         $color_fields = [];
         foreach (['depends_color', 'impact_color', 'impact_and_depends_color'] as $color) {
-            ob_start();
-            Html::showColorField($color, []);
-            $color_fields[$color] = ob_get_clean();
+            $color_fields[$color] = Html::showColorField($color, ['display' => false]);
         }
 
-        TemplateRenderer::getInstance()->display('@archires/impact_network_container.html.twig', [
+        return TemplateRenderer::getInstance()->render('@archires/impact_network_container.html.twig', [
             'action'                 => PLUGIN_ARCHIRES_WEBDIR . '/ajax/archires.php',
             'form_name'              => 'form_impact_network',
             'asset_types'            => $asset_types,
@@ -399,97 +324,6 @@ class Archires extends CommonGLPI
         ]);
     }
 
-    /**
-     * Print the title and view switch
-     *
-     * @param string $graph The network graph (json)
-     * @param string $params Params of the graph (json)
-     * @param bool $readonly Is the graph editable ?
-     */
-    public static function printHeader(
-        string $graph,
-        string $params,
-        bool $readonly
-    ) {
-        TemplateRenderer::getInstance()->display('@archires/impact_header.html.twig');
-
-        // $graph/$params are already-serialized JSON injected verbatim as JS object
-        // literals into the <script> block below. Neutralize the only ASCII characters
-        // json_encode() leaves raw ('<', '>', '&') so a stored value such as a relation
-        // name containing "</script>" cannot break out of the element (stored XSS).
-        // Non-ASCII bytes (incl. the U+2028/U+2029 line separators) are already escaped
-        // by json_encode(); escaping these three inside JSON string values keeps the
-        // payload a valid JS object literal, so quotes must stay untouched.
-        $graph  = self::escapeJsonForInlineScript($graph);
-        $params = self::escapeJsonForInlineScript($params);
-
-        // View selection — this block depends on the runtime graph/params/readonly
-        // values injected into GLPIImpact, so it stays a PHP-built script block.
-        echo Html::scriptBlock(
-            "
-         function showGraphView() {
-            $('#impact_list_view').hide();
-            $('#impact_graph_view').show();
-            $('#sviewlist i').removeClass('selected');
-            $('#sviewgraph i').addClass('selected');
-
-            if (window.GLPIImpact !== undefined && GLPIImpact.cy === null) {
-               GLPIImpact.buildNetwork($graph, $params, $readonly);
-            }
-         }
-
-         function showListView() {
-            $('#impact_graph_view').hide();
-            $('#impact_list_view').show();
-            $('#sviewgraph i').removeClass('selected');
-            $('#sviewlist i').addClass('selected');
-            $('#save_impact').removeClass('clean');
-         }
-
-         $('#sviewgraph').click(function() {
-            showGraphView();
-         });
-
-//         $('#sviewlist').click(function() {
-//            showListView();
-//         });
-      ",
-        );
-    }
-
-
-    /**
-     * Escape an already-serialized JSON payload for safe inlining inside an HTML
-     * <script> block as a bare JS object literal.
-     *
-     * json_encode() escapes every non-ASCII byte (so U+2028/U+2029 are covered) but
-     * leaves '<', '>' and '&' raw. Those three can appear only inside JSON string
-     * values, so rewriting them to their \uXXXX form both prevents a "</script>"
-     * (or "<!--") breakout and keeps the payload a valid JS object literal — unlike
-     * JSON_HEX_QUOT/JSON_HEX_APOS, which would mangle the structural quotes and break
-     * the literal when it is consumed as an object rather than JSON.parse()'d.
-     *
-     * @param string $json Serialized JSON string
-     *
-     * @return string
-     */
-    private static function escapeJsonForInlineScript(string $json): string
-    {
-        return strtr($json, [
-            '<' => '\\u003C',
-            '>' => '\\u003E',
-            '&' => '\\u0026',
-        ]);
-    }
-
-
-    /**
-     * Get saved graph params for the current item
-     *
-     * @param CommonDBTM $item
-     *
-     * @return string $item
-     */
     public static function prepareParams(CommonDBTM $item)
     {
         $impact_item = ImpactItem::findForItem($item);
