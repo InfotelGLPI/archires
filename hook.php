@@ -55,7 +55,10 @@ function plugin_archires_install()
     );
 
     Profile::initProfile();
-    Profile::createFirstAccess($_SESSION['glpiactiveprofile']['id']);
+    // No active profile when installed from the console without --username
+    if (isset($_SESSION['glpiactiveprofile']['id'])) {
+        Profile::createFirstAccess($_SESSION['glpiactiveprofile']['id']);
+    }
 
     return true;
 }

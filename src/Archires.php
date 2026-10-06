@@ -32,13 +32,11 @@ namespace GlpiPlugin\Archires;
 
 use CommonDBTM;
 use CommonGLPI;
-use Dropdown;
 use Glpi\Application\View\TemplateRenderer;
 use Glpi\Search\SearchEngine;
 use Glpi\Search\SearchOption;
 use Html;
 use Impact;
-use Infocom;
 use NetworkPort;
 use NetworkPort_NetworkPort;
 use Problem;
@@ -68,7 +66,7 @@ class Archires extends CommonGLPI
     public const MAX_DEPTH = 10;
     public const NO_DEPTH_LIMIT = 10000;
 
-    public static $rightname = 'plugin_archires';
+    public static string $rightname = 'plugin_archires';
 
     public static function getTypeName($nb = 0)
     {
@@ -109,14 +107,14 @@ class Archires extends CommonGLPI
             return '';
         }
 
+        // Count is disabled in config OR no item loaded OR ITIL object -> no count
+        $total = 0;
         if (
-            !$_SESSION['glpishow_count_on_tabs']
-            || !isset($item->fields['id'])
-            || $is_itil_object
+            $_SESSION['glpishow_count_on_tabs']
+            && isset($item->fields['id'])
+            && !$is_itil_object
+            && $is_enabled_asset
         ) {
-            // Count is disabled in config OR no item loaded OR ITIL object -> no count
-            $total = 0;
-        } elseif ($is_enabled_asset) {
             // If on an asset, get the number of its direct dependencies
             $total = count($DB->request([
                 'FROM' => ImpactRelation::getTable(),
@@ -210,7 +208,7 @@ class Archires extends CommonGLPI
         }
 
         // Build graph and params
-        $graph = self::buildGraph($item, true);
+        $graph = self::buildGraph($item);
         $params = self::prepareParams($item);
         $readonly = !$item->can($item->fields['id'], UPDATE);
 
@@ -372,14 +370,16 @@ class Archires extends CommonGLPI
     /**
      * Build the impact graph starting from a node
      *
+     * Each direction is explored transitively from the start node, as in the core
+     * Impact::buildGraph() (whose former $recursive flag had no effect and was removed).
+     *
      * @param CommonDBTM $item Current item
-     * @param boolean $recursive Each relation found will be explored from in both directions
      *
      * @return array Array containing edges and nodes
      * @since 9.5
      *
      */
-    public static function buildGraph(CommonDBTM $item, $recursive = false)
+    public static function buildGraph(CommonDBTM $item)
     {
         $nodes = [];
         $edges = [];
@@ -391,7 +391,6 @@ class Archires extends CommonGLPI
             $item,
             self::DIRECTION_FORWARD,
             [self::getNodeID($item) => true],
-            $recursive,
         );
 
         // Explore the graph backward
@@ -401,7 +400,6 @@ class Archires extends CommonGLPI
             $item,
             self::DIRECTION_BACKWARD,
             [self::getNodeID($item) => true],
-            $recursive,
         );
 
         // Add current node to the graph if no impact relations were found
@@ -512,69 +510,6 @@ class Archires extends CommonGLPI
                 "Invalid value for argument \$direction ($direction).",
             ),
         };
-    }
-
-    /**
-     * Check if the icon path is valid, if not return a fallback path
-     *
-     * @param string $icon_path
-     * @return string
-     */
-    private static function checkIcon(string $icon_path): string
-    {
-        // Special case for images returned dynamicly
-        if (strpos($icon_path, ".php") !== false) {
-            return $icon_path;
-        }
-
-        // Check if icon exist on the filesystem
-        $file_path = GLPI_ROOT . "/$icon_path";
-        if (file_exists($file_path) && is_file($file_path)) {
-            return $icon_path;
-        }
-
-        // Fallback "default" icon
-        return "pics/impact/default.png";
-    }
-
-
-    /**
-     * add data for node tooltip
-     *
-     * @param CommonDBTM $item
-     * @return array
-     */
-    private static function addTooltip(CommonDBTM $item): array
-    {
-        $type = "";
-        if (class_exists($item::class . "Type")) {
-            $tabletype = getTableForItemType($item::class . "Type");
-            $typefield = getForeignKeyFieldForTable($tabletype);
-            $types_id = $item->fields[$typefield];
-            $type = Dropdown::getDropdownName($tabletype, $types_id);
-        }
-        $states_id = "";
-        if (isset($item->fields['states_id'])) {
-            $states_id = Dropdown::getDropdownName("glpi_states", $item->fields['states_id']);
-        }
-        $infocom = new Infocom();
-        $businesscriticities_id = "";
-        if ($infocom->getFromDBforDevice($item::class, $item->getID())) {
-            $businesscriticities_id
-                = Dropdown::getDropdownName(
-                    'glpi_businesscriticities',
-                    $infocom->fields['businesscriticities_id'],
-                );
-        }
-        $tooltip = [
-            __("Name") => $item->getFriendlyName(),
-            _n("Type", "Types", 1) => $type,
-            __("Status") => $states_id,
-            _n("Business criticity", "Business criticities", 1) => $businesscriticities_id,
-            __("Comments") => $item->fields['comment'],
-        ];
-
-        return $tooltip;
     }
 
     /**
@@ -711,7 +646,7 @@ class Archires extends CommonGLPI
      *
      * @return void
      *
-     * @throws InvalidArgumentException
+     * @throws \InvalidArgumentException
      * @since 9.5
      *
      */
@@ -766,9 +701,8 @@ class Archires extends CommonGLPI
      *                                   or DIRECTION_BACKWARD
      * @param array $explored_nodes List of nodes that have already been
      *                                   explored
-     * @param boolean $recursive Should found relations be explored in both directions
      *
-     * @throws InvalidArgumentException
+     * @throws \InvalidArgumentException
      * @since 9.5
      *
      */

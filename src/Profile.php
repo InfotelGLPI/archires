@@ -42,7 +42,7 @@ use Session;
  */
 class Profile extends \Profile
 {
-    public static $rightname = "profile";
+    public static string $rightname = "profile";
 
     public static function getIcon()
     {
@@ -53,13 +53,12 @@ class Profile extends \Profile
      * @param CommonGLPI $item
      * @param int        $withtemplate
      *
-     * @return string|translated
+     * @return string
      */
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
 
-        if ($item->getType() == 'Profile' && $item->getField('interface') != 'helpdesk'
-        ) {
+        if ($item instanceof \Profile && $item->getField('interface') != 'helpdesk') {
             return self::createTabEntry(__('Network architecture', 'archires'));
         }
         return '';
@@ -202,6 +201,11 @@ class Profile extends \Profile
             if ($dbu->countElementsInTable("glpi_profilerights", ["name" => $data['field']]) == 0) {
                 ProfileRight::addProfileRights([$data['field']]);
             }
+        }
+
+        // No active profile when run from the console without --username
+        if (!isset($_SESSION['glpiactiveprofile']['id'])) {
+            return;
         }
 
         $it = $DB->request([

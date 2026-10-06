@@ -1,0 +1,77 @@
+includes:
+    - ../../vendor/glpi-project/phpstan-glpi/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - ajax
+        - src
+        - hook.php
+        - setup.php
+    scanDirectories:
+        - ../../src
+    bootstrapFiles:
+        - ../../stubs/glpi_constants.php
+        - ../../vendor/autoload.php
+        - setup.php
+    treatPhpDocTypesAsCertain: false
+    # stubs/glpi_constants.php assigns a random value to these constants on every run, so
+    # without this list PHPStan narrows on that value and reports alwaysTrue/alwaysFalse
+    # errors that flip between runs. Mirrors the list in GLPI core phpstan.neon.dist.
+    dynamicConstantNames:
+        - GLPI_AJAX_DASHBOARD
+        - GLPI_ALLOW_IFRAME_IN_RICH_TEXT
+        - GLPI_CACHE_DIR
+        - GLPI_CALDAV_IMPORT_STATE
+        - GLPI_CENTRAL_WARNINGS
+        - GLPI_CONFIG_DIR
+        - GLPI_CRON_DIR
+        - GLPI_DISABLE_ONLY_FULL_GROUP_BY_SQL_MODE
+        - GLPI_DISABLE_REAUTH
+        - GLPI_DISALLOWED_UPLOADS_PATTERN
+        - GLPI_DOC_DIR
+        - GLPI_DOCUMENTATION_ROOT_URL
+        - GLPI_ENVIRONMENT_TYPE
+        - GLPI_FORCE_MAIL
+        - GLPI_GRAPH_DIR
+        - GLPI_INSTALL_MODE
+        - GLPI_INVENTORY_DIR
+        - GLPI_LOCAL_I18N_DIR
+        - GLPI_LOCK_DIR
+        - GLPI_LOG_DIR
+        - GLPI_LOG_LVL
+        - GLPI_MARKETPLACE_ALLOW_OVERRIDE
+        - GLPI_MARKETPLACE_DIR
+        - GLPI_MARKETPLACE_ENABLE
+        - GLPI_MARKETPLACE_MANUAL_DOWNLOADS
+        - GLPI_MARKETPLACE_PLUGINS_API_URI
+        - GLPI_MARKETPLACE_PRERELEASES
+        - GLPI_NETWORK_API_URL
+        - GLPI_NETWORK_REGISTRATION_API_URL
+        - GLPI_NETWORK_MAIL
+        - GLPI_NETWORK_SERVICES
+        - GLPI_PICTURE_DIR
+        - GLPI_PLUGIN_DOC_DIR
+        - GLPI_PLUGINS_DIRECTORIES
+        - GLPI_REVERSE_PROXY_HEADERS
+        - GLPI_RSS_DIR
+        - GLPI_SERVERSIDE_URL_ALLOWED_PRIVATE_NETWORKS_CONTEXTS
+        - GLPI_SESSION_DIR
+        - GLPI_SKIP_UPDATES
+        - GLPI_STRICT_ENV
+        - GLPI_SYSTEM_CRON
+        - GLPI_TELEMETRY_URI
+        - GLPI_TEXT_MAXSIZE
+        - GLPI_THEMES_DIR
+        - GLPI_TMP_DIR
+        - GLPI_TRUSTED_REVERSE_PROXIES
+        - GLPI_UPLOAD_DIR
+        - GLPI_USER_AGENT_EXTRA_COMMENTS
+        - GLPI_VAR_DIR
+        - GLPI_WEBHOOK_ALLOW_RESPONSE_SAVING
+        - GLPI_WEBHOOK_CRA_MANDATORY
+        - GLPI_ALTCHA_MODE
+        - GLPI_ALTCHA_MAX_NUMBER
+        - GLPI_ALTCHA_COST
+        - GLPI_ALTCHA_EXPIRATION_INTERVAL
+        - TU_USER

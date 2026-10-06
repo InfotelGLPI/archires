@@ -41,10 +41,10 @@ use Migration;
 class ImpactRelation extends CommonDBRelation
 {
     // CommonDBRelation fields
-    public static $itemtype_1          = 'itemtype_source';
-    public static $items_id_1          = 'items_id_source';
-    public static $itemtype_2          = 'itemtype_impacted';
-    public static $items_id_2          = 'items_id_impacted';
+    public static ?string $itemtype_1          = 'itemtype_source';
+    public static ?string $items_id_1          = 'items_id_source';
+    public static ?string $itemtype_2          = 'itemtype_impacted';
+    public static ?string $items_id_2          = 'items_id_impacted';
 
 
     public static function install(Migration $migration)
@@ -140,10 +140,8 @@ class ImpactRelation extends CommonDBRelation
      * Get an impact id from an input form
      *
      * @param array $input   Array containing the impact to be deleted
-     * @param array $options
-     * @param bool  $history
      *
-     * @return bool false on failure
+     * @return int|false id of the relation, false when it does not exist
      */
     public static function getIDFromInput(array $input)
     {
